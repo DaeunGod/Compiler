@@ -1,2 +1,4 @@
 # Project #1
-20131612 최대운
+code reference: http://www.cs.sjsu.edu/~louden/cmptext/ \
+20131612 최대운\
+
