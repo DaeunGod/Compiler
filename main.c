@@ -38,31 +38,45 @@ FILE * code;
 
 /* allocate and set tracing flags */
 int EchoSource = FALSE;
-int TraceScan = FALSE;
+int TraceScan = TRUE;
 int TraceParse = FALSE;
 int TraceAnalyze = FALSE;
 int TraceCode = FALSE;
 
 int Error = FALSE;
 
+TokenType getToken(void);
+
 int main( int argc, char * argv[] )
-{ TreeNode * syntaxTree;
-  char pgm[120]; /* source code file name */
-  if (argc != 2)
-    { fprintf(stderr,"usage: %s <filename>\n",argv[0]);
-      exit(1);
-    }
-  strcpy(pgm,argv[1]) ;
-  if (strchr (pgm, '.') == NULL)
-     strcat(pgm,".tny");
-  source = fopen(pgm,"r");
-  if (source==NULL)
-  { fprintf(stderr,"File %s not found\n",pgm);
-    exit(1);
-  }
-  listing = stdout; /* send listing to screen */
-  fprintf(listing,"\nTINY COMPILATION: %s\n",pgm);
-#if NO_PARSE
+{ 
+	TreeNode * syntaxTree;
+	char pgm[120]; /* source code file name */
+  
+	if (argc != 2)
+	{ 
+		fprintf(stderr,"usage: %s <filename>\n",argv[0]);
+		exit(1);
+	}
+	strcpy(pgm,argv[1]) ;
+	if (strchr (pgm, '.') == NULL)
+		strcat(pgm,".tny");
+	source = fopen(pgm,"r");
+  
+	if (source==NULL)
+	{ 
+		fprintf(stderr,"File %s not found\n",pgm);
+		exit(1);
+	}
+	listing = stdout; /* send listing to screen */
+	fprintf(listing,"\nTINY COMPILATION: %s\n",pgm);
+	printf("\tline Number\ttoken\t\tlexeme\n");
+	printf("-------------------------------------------------------\n");
+
+	while( getToken() != ENDFILE );
+
+  //printf("%d\n", getToken());
+  //printf("%d\n", getToken());
+/*#if NO_PARSE
   while (getToken()!=ENDFILE);
 #else
   syntaxTree = parse();
@@ -95,7 +109,7 @@ int main( int argc, char * argv[] )
   }
 #endif
 #endif
-#endif
+#endif*/
   fclose(source);
   return 0;
 }

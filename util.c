@@ -9,47 +9,72 @@
 #include "globals.h"
 #include "util.h"
 
+extern int yylineno;
 /* Procedure printToken prints a token 
  * and its lexeme to the listing file
  */
 void printToken( TokenType token, const char* tokenString )
 { switch (token)
   { case IF:
-    case THEN:
+	  fprintf(listing,
+		"\t\tIF\t\t%s\n", tokenString);
+	  break;
     case ELSE:
-    case END:
-    case REPEAT:
-    case UNTIL:
-    case READ:
-    case WRITE:
-      fprintf(listing,
-         "reserved word: %s\n",tokenString);
-      break;
-    case ASSIGN: fprintf(listing,":=\n"); break;
-    case LT: fprintf(listing,"<\n"); break;
-    case EQ: fprintf(listing,"=\n"); break;
-    case LPAREN: fprintf(listing,"(\n"); break;
-    case RPAREN: fprintf(listing,")\n"); break;
-    case SEMI: fprintf(listing,";\n"); break;
-    case PLUS: fprintf(listing,"+\n"); break;
-    case MINUS: fprintf(listing,"-\n"); break;
-    case TIMES: fprintf(listing,"*\n"); break;
-    case OVER: fprintf(listing,"/\n"); break;
-    case ENDFILE: fprintf(listing,"EOF\n"); break;
+	  fprintf(listing,
+		"\t\tELSE\t\t%s\n", tokenString);
+	  break;
+	case INT:
+	  fprintf(listing,
+		"\t\tINT\t\t%s\n", tokenString);
+	  break;
+	case VOID:
+	  fprintf(listing,
+		"\t\tVOID\t\t%s\n", tokenString);
+	  break;
+	case WHILE:
+	  fprintf(listing,
+		"\t\tWHILE\t\t%s\n", tokenString);
+	  break;
+	case RETURN:
+	  fprintf(listing,
+		"\t\tRETURN\t\t%s\n", tokenString);
+	  break;
+	  
+    case STARTCOMMENT: fprintf(listing,"\t\t/*\t\t%s\n", tokenString); break;
+    case ASSIGN: fprintf(listing,"\t\t=\t\t%s\n", tokenString); break;
+    case LT: fprintf(listing,"\t\t<\t\t%s\n", tokenString); break;
+    case GT: fprintf(listing,"\t\t>\t\t%s\n", tokenString); break;
+    case LTET: fprintf(listing,"\t\t<=\t\t%s\n", tokenString); break;
+    case GTET: fprintf(listing,"\t\t>=\t\t%s\n", tokenString); break;
+    case EQ: fprintf(listing,"\t\t==\t\t%s\n", tokenString); break;
+    case NOTEQ: fprintf(listing,"\t\t!=\t\t%s\n", tokenString); break;
+    case LPAREN: fprintf(listing,"\t\t(\t\t%s\n", tokenString); break;
+    case RPAREN: fprintf(listing,"\t\t)\t\t\%s\n", tokenString); break;
+    case LSQBRACKET: fprintf(listing,"\t\t[\t\t\%s\n", tokenString); break;
+    case RSQBRACKET: fprintf(listing,"\t\t]\t\t\%s\n", tokenString); break;
+    case LBRACE: fprintf(listing,"\t\t{\t\t\%s\n", tokenString); break;
+    case RBRACE: fprintf(listing,"\t\t}\t\t\%s\n", tokenString); break;
+    case SEMI: fprintf(listing,"\t\t;\t\t%s\n", tokenString); break;
+    case PLUS: fprintf(listing,"\t\t+\t\t%s\n", tokenString); break;
+    case MINUS: fprintf(listing,"\t\t-\t\t%s\n", tokenString); break;
+    case TIMES: fprintf(listing,"\t\t*\t\t%s\n", tokenString); break;
+    case OVER: fprintf(listing,"\t\t/\t\t%s\n", tokenString); break;
+    case COMMA: fprintf(listing,"\t\t,\t\t%s\n", tokenString); break;
+    case ENDFILE: fprintf(listing,"\t\tEOF\n"); break;
     case NUM:
       fprintf(listing,
-          "NUM, val= %s\n",tokenString);
+          "\t\tNUM\t\t%s\n",tokenString);
       break;
     case ID:
       fprintf(listing,
-          "ID, name= %s\n",tokenString);
+          "\t\tID\t\t%s\n",tokenString);
       break;
     case ERROR:
       fprintf(listing,
-          "ERROR: %s\n",tokenString);
+          "\t\tERROR\t\t%s\n","Comment Error");
       break;
     default: /* should never happen */
-      fprintf(listing,"Unknown token: %d\n",token);
+      ;//fprintf(listing,"Unknown token: %d\n",token);
   }
 }
 
