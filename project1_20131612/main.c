@@ -68,8 +68,8 @@ int main( int argc, char * argv[] )
 		exit(1);
 	}
 	listing = stdout; /* send listing to screen */
-	fprintf(listing,"\nTINY COMPILATION: %s\n",pgm);
-	printf("\tline Number\ttoken\t\tlexeme\n");
+	//fprintf(listing,"\nTINY COMPILATION: %s\n",pgm);
+	printf("   line Number\t\ttoken\t\tlexeme\n");
 	printf("-------------------------------------------------------\n");
 
 	while( getToken() != ENDFILE );

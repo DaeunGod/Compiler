@@ -31,7 +31,6 @@ Build a lexical analysis phase for the C- language, defined in Appendix A of the
 | "<=" | LTET |
 | ">=" | GTET |
 | "/*" | Start of comments.<br> Consume the text until meet "\*/"|
-| "*/" | ERROR("\*/" may consume in "/*" rule) |
 | "=" | ASSIGN |
 | "<" | LT |
 | ">" | GT |

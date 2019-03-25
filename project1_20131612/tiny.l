@@ -56,7 +56,6 @@ whitespace  [ \t]+
 						}
 					}
 				}
-"*/"			{return ERROR;}
 "="            {return ASSIGN;}
 "<"             {return LT;}
 ">"				{return GT;}
@@ -91,7 +90,7 @@ TokenType getToken(void)
   currentToken = yylex();
   strncpy(tokenString,yytext,MAXTOKENLEN);
   if (TraceScan) {
-    fprintf(listing,"\t    %d",lineno);
+    fprintf(listing,"      %d",lineno);
     printToken(currentToken,tokenString);
   }
   return currentToken;
