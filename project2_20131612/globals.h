@@ -23,18 +23,20 @@
 #endif
 
 /* MAXRESERVED = the number of reserved words */
-#define MAXRESERVED 8
+#define MAXRESERVED 6
 
-typedef enum 
-    /* book-keeping tokens */
-   {ENDFILE,ERROR,
-    /* reserved words */
-    IF,ELSE,INT,VOID,WHILE,RETURN,
-    /* multicharacter tokens */
-    ID,NUM,
-    /* special symbols */
-    ASSIGN,EQ,NOTEQ, LTET, GTET, LT, GT, PLUS,MINUS,TIMES,OVER,LPAREN,RPAREN, LSQBRACKET, RSQBRACKET, LBRACE, RBRACE, STARTCOMMENT, SEMI, COMMA
-   } TokenType;
+//typedef enum 
+//    /* book-keeping tokens */
+//   {ENDFILE,ERROR,
+//    /* reserved words */
+//    IF,ELSE,INT,VOID,WHILE,RETURN,
+//    /* multicharacter tokens */
+//    ID,NUM,
+//    /* special symbols */
+//    ASSIGN,EQ,NOTEQ, LTET, GTET, LT, GT, PLUS,MINUS,TIMES,OVER,LPAREN,RPAREN, LSQBRACKET, RSQBRACKET, LBRACE, RBRACE, STARTCOMMENT, SEMI, COMMA
+//   } TokenType;
+
+typedef int TokenType;
 
 extern FILE* source; /* source code text file */
 extern FILE* listing; /* listing output text file */
@@ -46,12 +48,13 @@ extern int lineno; /* source line number for listing */
 /***********   Syntax tree for parsing ************/
 /**************************************************/
 
-typedef enum {StmtK,ExpK} NodeKind;
-typedef enum {IfK,RepeatK,AssignK,ReadK,WriteK} StmtKind;
+typedef enum {StmtK,ExpK, DeclarationK} NodeKind;
+typedef enum {IfK,WhileK,AssignK,ReadK,WriteK} StmtKind;
 typedef enum {OpK,ConstK,IdK} ExpKind;
+typedef enum {SimpleK, ArrayK, FunctionK, ParamK} DeclarationKind;
 
 /* ExpType is used for type checking */
-typedef enum {Void,Integer,Boolean} ExpType;
+typedef enum {Void,Integer} ExpType;
 
 #define MAXCHILDREN 3
 
@@ -60,11 +63,11 @@ typedef struct treeNode
      struct treeNode * sibling;
      int lineno;
      NodeKind nodekind;
-     union { StmtKind stmt; ExpKind exp;} kind;
+     union { StmtKind stmt; ExpKind exp; DeclarationKind dec} kind;
      union { TokenType op;
              int val;
              char * name; } attr;
-     ExpType type; /* for type checking of exps */
+     ExpType expType; /* for type checking of exps */
    } TreeNode;
 
 /**************************************************/

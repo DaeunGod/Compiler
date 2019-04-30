@@ -6,6 +6,7 @@
 /****************************************************/
 
 #include "globals.h"
+#include "tiny.tab.h"
 
 /* set NO_PARSE to TRUE to get a scanner-only compiler */
 #define NO_PARSE FALSE
@@ -18,10 +19,10 @@
 #define NO_CODE FALSE
 
 #include "util.h"
-/*#if NO_PARSE
+//#if NO_PARSE
 #include "scan.h"
-#else
-#include "parse.h"
+//#else
+/*#include "parse.h"
 #if !NO_ANALYZE
 #include "analyze.h"
 #if !NO_CODE

@@ -6,6 +6,7 @@
 /* Kenneth C. Louden                                */
 /****************************************************/
 
+#include "tiny.tab.h"
 #include "globals.h"
 #include "util.h"
 
@@ -109,6 +110,25 @@ TreeNode * newExpNode(ExpKind kind)
     t->sibling = NULL;
     t->nodekind = ExpK;
     t->kind.exp = kind;
+    t->lineno = lineno;
+    t->type = Void;
+  }
+  return t;
+}
+
+/* Function newDecNode creates a new declaration 
+ * node for syntax tree construction
+ */
+TreeNode * newDecNode(DeclarationKind kind) {
+  TreeNode * t = (TreeNode *) malloc(sizeof(TreeNode));
+  int i;
+  if (t==NULL)
+    fprintf(listing,"Out of memory error at line %d\n",lineno);
+  else {
+    for (i=0;i<MAXCHILDREN;i++) t->child[i] = NULL;
+    t->sibling = NULL;
+    t->nodekind = DeclarationK;
+    t->kind.dec = kind;
     t->lineno = lineno;
     t->type = Void;
   }

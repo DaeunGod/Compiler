@@ -8,7 +8,8 @@
 %{
 #include "globals.h"
 #include "util.h"
-//#include "scan.h"
+#include "scan.h"
+#include "tiny.tab.h"
 /* lexeme of identifier or reserved word */
 #define MAXTOKENLEN 40
 char tokenString[MAXTOKENLEN+1];
@@ -78,7 +79,7 @@ whitespace  [ \t]+
 
 %%
 
-TokenType getToken(void)
+/*TokenType getToken(void)
 { static int firstTime = TRUE;
   TokenType currentToken;
   if (firstTime)
@@ -94,6 +95,6 @@ TokenType getToken(void)
     printToken(currentToken,tokenString);
   }
   return currentToken;
-}
+}*/
 
 int yywrap(){ /* actions for reaching EOF */ }
