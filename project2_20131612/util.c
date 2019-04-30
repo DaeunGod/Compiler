@@ -111,7 +111,7 @@ TreeNode * newExpNode(ExpKind kind)
     t->nodekind = ExpK;
     t->kind.exp = kind;
     t->lineno = lineno;
-    t->type = Void;
+    t->expType = Void;
   }
   return t;
 }
@@ -130,7 +130,7 @@ TreeNode * newDecNode(DeclarationKind kind) {
     t->nodekind = DeclarationK;
     t->kind.dec = kind;
     t->lineno = lineno;
-    t->type = Void;
+    t->expType = Void;
   }
   return t;
 }
@@ -179,17 +179,8 @@ void printTree( TreeNode * tree )
         case IfK:
           fprintf(listing,"If\n");
           break;
-        case RepeatK:
-          fprintf(listing,"Repeat\n");
-          break;
         case AssignK:
           fprintf(listing,"Assign to: %s\n",tree->attr.name);
-          break;
-        case ReadK:
-          fprintf(listing,"Read: %s\n",tree->attr.name);
-          break;
-        case WriteK:
-          fprintf(listing,"Write\n");
           break;
         default:
           fprintf(listing,"Unknown ExpNode kind\n");
