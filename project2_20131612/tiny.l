@@ -11,8 +11,8 @@
 #include "scan.h"
 #include "tiny.tab.h"
 /* lexeme of identifier or reserved word */
-#define MAXTOKENLEN 40
 char tokenString[MAXTOKENLEN+1];
+char tokenStringNew[MAXTOKENLEN+1];
 %}
 
 digit       [0-9]
@@ -72,14 +72,14 @@ whitespace  [ \t]+
 "}"				{return RBRACE;}
 ";"             {return SEMI;}
 ","				{return COMMA;}
-{number}        {return NUM;}
 {identifier}    {return ID;}
+{number}        {return NUM;}
 {newline}       {lineno++;}
 {whitespace}    {/* skip whitespace */}
 
 %%
 
-/*TokenType getToken(void)
+TokenType getToken(void)
 { static int firstTime = TRUE;
   TokenType currentToken;
   if (firstTime)
@@ -89,12 +89,14 @@ whitespace  [ \t]+
     yyout = listing;
   }
   currentToken = yylex();
+
+	strncpy(tokenStringNew, tokenString, MAXTOKENLEN);
   strncpy(tokenString,yytext,MAXTOKENLEN);
   if (TraceScan) {
     fprintf(listing,"      %d ",lineno);
     printToken(currentToken,tokenString);
   }
   return currentToken;
-}*/
+}
 
 int yywrap(){ /* actions for reaching EOF */ }

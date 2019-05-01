@@ -6,7 +6,6 @@
 /****************************************************/
 
 #include "globals.h"
-#include "tiny.tab.h"
 
 /* set NO_PARSE to TRUE to get a scanner-only compiler */
 #define NO_PARSE FALSE
@@ -22,8 +21,8 @@
 //#if NO_PARSE
 #include "scan.h"
 //#else
-/*#include "parse.h"
-#if !NO_ANALYZE
+#include "parse.h"
+/*#if !NO_ANALYZE
 #include "analyze.h"
 #if !NO_CODE
 #include "cgen.h"
@@ -39,14 +38,12 @@ FILE * code;
 
 /* allocate and set tracing flags */
 int EchoSource = FALSE;
-int TraceScan = TRUE;
-int TraceParse = FALSE;
+int TraceScan = FALSE;
+int TraceParse = TRUE;
 int TraceAnalyze = FALSE;
 int TraceCode = FALSE;
 
 int Error = FALSE;
-
-TokenType getToken(void);
 
 int main( int argc, char * argv[] )
 { 
@@ -70,22 +67,22 @@ int main( int argc, char * argv[] )
 	}
 	listing = stdout; /* send listing to screen */
 	//fprintf(listing,"\nTINY COMPILATION: %s\n",pgm);
-	printf("   line Number\t\ttoken\t\tlexeme\n");
-	printf("-------------------------------------------------------\n");
+	//printf("   line Number\t\ttoken\t\tlexeme\n");
+	//printf("-------------------------------------------------------\n");
 
-	while( getToken() != ENDFILE );
+	//while( getToken() != ENDFILE );
 
   //printf("%d\n", getToken());
   //printf("%d\n", getToken());
-/*#if NO_PARSE
-  while (getToken()!=ENDFILE);
-#else
+//#if NO_PARSE
+//  while (getToken()!=ENDFILE);
+//#else
   syntaxTree = parse();
   if (TraceParse) {
     fprintf(listing,"\nSyntax tree:\n");
     printTree(syntaxTree);
   }
-#if !NO_ANALYZE
+/*#if !NO_ANALYZE
   if (! Error)
   { if (TraceAnalyze) fprintf(listing,"\nBuilding Symbol Table...\n");
     buildSymtab(syntaxTree);

@@ -43,12 +43,12 @@ void printToken( TokenType token, const char* tokenString )
 	  
     case STARTCOMMENT: fprintf(listing,"\t\t/*\t\t%s\n", tokenString); break;
     case ASSIGN: fprintf(listing,"\t\t=\t\t%s\n", tokenString); break;
-    case LT: fprintf(listing,"\t\t<\t\t%s\n", tokenString); break;
-    case GT: fprintf(listing,"\t\t>\t\t%s\n", tokenString); break;
-    case LTET: fprintf(listing,"\t\t<=\t\t%s\n", tokenString); break;
-    case GTET: fprintf(listing,"\t\t>=\t\t%s\n", tokenString); break;
-    case EQ: fprintf(listing,"\t\t==\t\t%s\n", tokenString); break;
-    case NOTEQ: fprintf(listing,"\t\t!=\t\t%s\n", tokenString); break;
+    case LT: fprintf(listing,"<%s\n", tokenString); break;
+    case GT: fprintf(listing,">%s\n", tokenString); break;
+    case LTET: fprintf(listing,"<=%s\n", tokenString); break;
+    case GTET: fprintf(listing,">=%s\n", tokenString); break;
+    case EQ: fprintf(listing,"==%s\n", tokenString); break;
+    case NOTEQ: fprintf(listing,"!=%s\n", tokenString); break;
     case LPAREN: fprintf(listing,"\t\t(\t\t%s\n", tokenString); break;
     case RPAREN: fprintf(listing,"\t\t)\t\t\%s\n", tokenString); break;
     case LSQBRACKET: fprintf(listing,"\t\t[\t\t\%s\n", tokenString); break;
@@ -56,10 +56,10 @@ void printToken( TokenType token, const char* tokenString )
     case LBRACE: fprintf(listing,"\t\t{\t\t\%s\n", tokenString); break;
     case RBRACE: fprintf(listing,"\t\t}\t\t\%s\n", tokenString); break;
     case SEMI: fprintf(listing,"\t\t;\t\t%s\n", tokenString); break;
-    case PLUS: fprintf(listing,"\t\t+\t\t%s\n", tokenString); break;
-    case MINUS: fprintf(listing,"\t\t-\t\t%s\n", tokenString); break;
-    case TIMES: fprintf(listing,"\t\t*\t\t%s\n", tokenString); break;
-    case OVER: fprintf(listing,"\t\t/\t\t%s\n", tokenString); break;
+    case PLUS: fprintf(listing,"+%s\n", tokenString); break;
+    case MINUS: fprintf(listing,"-%s\n", tokenString); break;
+    case TIMES: fprintf(listing,"*%s\n", tokenString); break;
+    case OVER: fprintf(listing,"/%s\n", tokenString); break;
     case COMMA: fprintf(listing,"\t\t,\t\t%s\n", tokenString); break;
     case ENDFILE: fprintf(listing,"\t\tEOF\n"); break;
     case NUM:
@@ -174,14 +174,94 @@ void printTree( TreeNode * tree )
   INDENT;
   while (tree != NULL) {
     printSpaces();
-    if (tree->nodekind==StmtK)
+	if( tree->nodekind == DeclarationK ){
+		switch (tree->kind.dec) {
+			case FunctionK:
+				fprintf(listing, "Function: %s\n", tree->attr.name);
+				INDENT;
+				printSpaces();
+				if( tree->expType == INT )
+					fprintf(listing, "Type: Int\n");
+				else if( tree->expType == VOID )
+					fprintf(listing, "Type: Void\n");
+				UNINDENT;
+				if( tree->child[0] == NULL ){
+					INDENT;
+					printSpaces();
+					fprintf(listing, "Parameter: (null)\n");
+					UNINDENT;
+				}
+			
+				//printTree(tree->child[0]);
+				//printTree(tree->child[1]);
+				break;
+			case ParamK:
+				if( tree == NULL ){
+					fprintf(listing, "Parameter: (null)\n");
+				}
+				else{
+					fprintf(listing, "Parameter: %s\n", tree->attr.name);
+					INDENT;
+					printSpaces();
+					if( tree->expType == INT )
+						fprintf(listing, "Type: Int\n");
+					else if( tree->expType == VOID )
+						fprintf(listing, "Type: Void\n");
+					UNINDENT;
+				}
+				break;
+			case ArrayK:
+				fprintf(listing, "ID: %s\n", tree->attr.name);
+				printSpaces();
+				fprintf(listing, "Type: Array %d\n", tree->val);
+				break;
+			case SimpleK:
+				fprintf(listing, "ID: %s\n", tree->attr.name);
+				printSpaces();
+				if( tree->expType == INT )
+					fprintf(listing, "Type: Int\n");
+				else if( tree->expType == VOID )
+					fprintf(listing, "Type: Void\n");
+				break;
+		}
+	}
+	else if (tree->nodekind==StmtK)
     { switch (tree->kind.stmt) {
         case IfK:
           fprintf(listing,"If\n");
+		  /*for(i=0; i<MAXCHILDREN; i++){
+			  if( tree->child[i] != NULL )
+				  printTree(tree->child[i]);
+		  }*/
           break;
+		case WhileK:
+		  fprintf(listing, "While\n");
+		  //printTree( tree->child[0] );
+		  //printTree( tree->child[1] );
+		  break;
+		case ReturnK:
+		  fprintf(listing, "Return\n");
+		  //if( tree->child[0] != NULL )
+			//  printTree( tree->child[0] );
+		  break;
         case AssignK:
-          fprintf(listing,"Assign to: %s\n",tree->attr.name);
+          fprintf(listing,"Op: =\n");
+		  //printTree( tree->child[0] );
+		  //printTree( tree->child[1] );
           break;
+		case CompoundK:
+          fprintf(listing,"Compound statement\n");
+		  /*TreeNode *tmp = tree->child[0]; // Declaration Part in Compound statement 
+		  while(tmp != NULL){
+			  printTree(tmp);
+			  tmp = tmp->sibling;
+		  }
+		  tmp = tree->child[1]; // Statemet_list Part in Compound statement 
+		  while(tmp != NULL){
+			  printTree(tmp);
+			  tmp = tmp->sibling;
+		  }*/
+		  break;
         default:
           fprintf(listing,"Unknown ExpNode kind\n");
           break;
@@ -194,19 +274,27 @@ void printTree( TreeNode * tree )
           printToken(tree->attr.op,"\0");
           break;
         case ConstK:
-          fprintf(listing,"Const: %d\n",tree->attr.val);
+          fprintf(listing,"Const: %d\n",tree->val);
           break;
         case IdK:
-          fprintf(listing,"Id: %s\n",tree->attr.name);
+          fprintf(listing,"ID: %s\n",tree->attr.name);
           break;
+		case FuncCallK:
+		  fprintf(listing, "Call procedure: %s\n", tree->attr.name);
+		  //if( tree->child[0] != NULL )
+			//  printTree(tree->child[0]);
+		  break;
         default:
           fprintf(listing,"Unknown ExpNode kind\n");
           break;
       }
     }
     else fprintf(listing,"Unknown node kind\n");
+
     for (i=0;i<MAXCHILDREN;i++)
-         printTree(tree->child[i]);
+		if(tree->child[i] != NULL)
+			printTree(tree->child[i]);
+
     tree = tree->sibling;
   }
   UNINDENT;

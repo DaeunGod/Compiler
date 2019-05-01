@@ -10,23 +10,44 @@
 #include "globals.h"
 #include "util.h"
 #include "scan.h"
-//#include "parse.h"
+#include "parse.h"
 
 #define YYSTYPE TreeNode *
 static char * savedName; /* for use in assignments */
+static char * savedFuncName;
 static int savedLineNo;  /* ditto */
 static char * savedValue; /* for use declaration ADD PRJ2 */
+static ExpType savedType; /* for use DataType ADd PRJ2 */
+static TokenType savedRelOp;
+static TokenType savedAddOp;
+static TokenType savedMulOp;
 static TreeNode * savedTree; /* stores syntax tree for later return */
 
 int yyerror(char * message);
 static int yylex(void);
+
+/*int yyerror(char * message)
+{ fprintf(listing,"Syntax error at line %d: %s\n",lineno,message);
+  fprintf(listing,"Current token: ");
+  //printToken(yychar,tokenString);
+  Error = TRUE;
+  return 0;
+}
+
+static int yylex(void)
+{ return getToken(); }
+
+TreeNode * parse(void)
+{ yyparse();
+  return savedTree;
+}*/
 %}
 
 %token IF ELSE INT VOID WHILE RETURN
-%token ID NUM 
+%token NUM ID 
 %token ASSIGN EQ NOTEQ LTET GTET LT GT PLUS MINUS TIMES OVER LPAREN RPAREN
 %token LSQBRACKET RSQBRACKET LBRACE RBRACE STARTCOMMENT SEMI COMMA
-%token ERROR ENDFILE 
+%token ERROR 
 
 %% /* Grammar for TINY */
 
@@ -46,41 +67,38 @@ declaration_list : declaration_list declaration
             	 ;
 declaration      : var_declaration { $$ = $1; }
             	 | fun_declaration { $$ = $1; }
-            	 | error  { $$ = NULL; }
             	 ;
-var_declaration  : type_specifier ID { savedName = copyString(tokenString);
-				   						savedLineNo = lineno; }
+var_declaration  : type_specifier ID { savedName = copyString(tokenStringNew);
+				   						savedLineNo = lineno;} 
 					SEMI
                  	{ $$ = newDecNode(SimpleK);
                    		$$->attr.name = savedName;
 						$$->lineno = savedLineNo;
-						if( $1 == INT )
-							$$->expType = Integer;
-						else if( $1 == VOID )
-							$$->expType = Void;
+						$$->expType = $1->expType;
                  	}
-            	 | type_specifier ID { savedName = copyString(tokenString);
+            	 | type_specifier ID { savedName = copyString(tokenStringNew);
 				 						savedLineNo = lineno; }
-					LSQBRACKET NUM { savedValue = copyString(tokenString); } 
+					LSQBRACKET NUM { savedValue = copyString(tokenString); }
 					RSQBRACKET SEMI
                  	{ $$ = newDecNode(ArrayK);
                    		$$->attr.name = savedName;
 						$$->lineno = savedLineNo;
-						$$->attr.val = atoi(savedValue);
-						$$->expType = $1;
+						$$->val = atoi(savedValue);
+						$$->expType = $1->expType;
                  	}
             	 ;
-type_specifier	 : INT { $$ = $1; }
-				 | VOID { $$ = $1; }
+type_specifier	 : INT { savedType = INT;  $$ = newDecNode(DummyK); $$->expType = INT;}
+				 | VOID { savedType = VOID; $$ = newDecNode(DummyK); $$->expType = VOID;}
 				 ;
-fun_declaration	 : type_specifier ID { savedName = copyString(tokenString);
-					   					savedLineNo = lineno; }
+fun_declaration	 : type_specifier ID { savedFuncName = copyString(tokenStringNew);
+				   						savedLineNo = lineno; }
 					LPAREN params RPAREN compound_stmt
 					{ $$ = newDecNode(FunctionK);
-						$$->attr.name = savedName;
+						$$->attr.name = savedFuncName;
 						$$->lineno = savedLineNo;
 						$$->child[0] = $5;
 						$$->child[1] = $7;
+						$$->expType = $1->expType;
 					}
 				 ;
 params			 : param_list { $$ = $1; }
@@ -99,27 +117,23 @@ param_list		 : param_list COMMA param
 				 ;
 param			 : type_specifier ID
 					{ $$ = newDecNode(ParamK);
-						$$->attr.name = copyString(tokenString);
+						$$->attr.name = copyString(tokenStringNew);
 						$$->lineno = lineno;
-						$$->expType = $1;
+						$$->expType = savedType;
 					}
-				 | type_specifier ID { savedName = copyString(tokenString);
+				 | type_specifier ID { savedName = copyString(tokenStringNew);
 				 						savedLineNo = lineno; }
 				 	LSQBRACKET RSQBRACKET
 				 	{ $$ = newDecNode(ParamK);
 						$$->attr.name = savedName;
 						$$->lineno = savedLineNo;
-						$$->expType = $1;
+						$$->expType = savedType;
 					}
 				 ;
 compound_stmt	 : LBRACE local_declarations statement_list RBRACE
-					{ YYSTYPE t = $2;
-						if( t != NULL ){
-							while( t->sibling != NULL )
-								t = t->sibling;
-							t->sibling = $3;
-							$$ = $2; }
-						else $$ = $3;
+					{ $$ = newStmtNode(CompoundK);
+						$$->child[0] = $2;
+						$$->child[1] = $3;
 					}
 				 ;
 local_declarations 	 : local_declarations var_declaration
@@ -131,7 +145,7 @@ local_declarations 	 : local_declarations var_declaration
 								$$ = $1; }
 							else $$ = $2;
 						}
-					 |
+					 | %empty { $$ = NULL; }
 					 ;
 statement_list		 : statement_list statement
 						{ YYSTYPE t = $1;
@@ -142,14 +156,13 @@ statement_list		 : statement_list statement
 								$$ = $1; }
 							else $$ = $2;
 						}
-					 |
+					 | %empty { $$ = NULL; }
 					 ;
 statement 			 : expression_stmt { $$ = $1; }
 					 | compound_stmt { $$ = $1; }
 					 | selection_stmt { $$ = $1; }
 					 | iteration_stmt { $$ = $1; }
 					 | return_stmt { $$ = $1; }
-					 | error { $$ = NULL; }
 					 ;
 expression_stmt		 : expression SEMI { $$ = $1; }
 					 | SEMI { $$ = NULL; }
@@ -184,15 +197,16 @@ expression			 : var ASSIGN expression
 						{ $$ = newStmtNode(AssignK);
 							$$->child[0] = $1;
 							$$->child[1] = $3;
+							$$->attr.op = ASSIGN;
 						}
 					 | simple_expression { $$ = $1; }
 					 ;
 var					 : ID 
 						{ $$ = newExpNode(IdK);
-							$$->attr.name = copyString(tokenString);
+							$$->attr.name = copyString(tokenStringNew);
 							$$->lineno = lineno; 
 						}
-					 | ID { savedName = copyString(tokenString);
+					 | ID { savedName = copyString(tokenStringNew);
 						 	savedLineNo = lineno; }
 						LSQBRACKET expression RSQBRACKET
 					 	{ $$ = newExpNode(IdK);
@@ -205,48 +219,48 @@ simple_expression	 : additive_expression relop additive_expression
 						{ $$ = newExpNode(OpK);
 							$$->child[0] = $1;
 							$$->child[1] = $3;
-							$$->attr.op = $2;
+							$$->attr.op = savedRelOp;
 						}
 					 | additive_expression { $$ = $1; }
 					 ;
-relop				 : LTET { $$ = $1; }
-					 | LT { $$ = $1; }
-					 | GT { $$ = $1; }
-					 | GTET { $$ = $1; }
-					 | EQ { $$ = $1; }
-					 | NOTEQ { $$ = $1; }
+relop				 : LTET { savedRelOp = LTET; }
+					 | LT { savedRelOp = LT; }
+					 | GT { savedRelOp = GT; }
+					 | GTET { savedRelOp = GTET; }
+					 | EQ { savedRelOp = EQ; }
+					 | NOTEQ { savedRelOp = NOTEQ; }
 					 ;
 additive_expression	 : additive_expression addop term
 						{ $$ = newExpNode(OpK);
 							$$->child[0] = $1;
 							$$->child[1] = $3;
-							$$->attr.op = $2;
+							$$->attr.op = savedAddOp;
 						}
 					 | term { $$ = $1; }
 					 ;
-addop				 : PLUS { $$ = $1; }
-					 | MINUS { $$ = $1; }
+addop				 : PLUS { savedAddOp = PLUS; }
+					 | MINUS { savedAddOp = MINUS; }
 					 ;
 term				 : term mulop factor
 						{ $$ = newExpNode(OpK);
 							$$->child[0] = $1;
 							$$->child[1] = $3;
-							$$->attr.op = $2;
+							$$->attr.op = savedMulOp;
 						}
 					 | factor { $$ = $1; }
 					 ;
-mulop				 : TIMES { $$ = $1; }
-					 | OVER { $$ = $1; }
+mulop				 : TIMES { savedMulOp = TIMES; }
+					 | OVER { savedMulOp = OVER; }
 					 ;
 factor				 : LPAREN expression RPAREN { $$ = $2; }
 					 | var { $$ = $1; }
 					 | call { $$ = $1; }
 					 | NUM
                  		{ $$ = newExpNode(ConstK);
-							$$->attr.val = atoi(tokenString);
+							$$->val = atoi(tokenString);
 						}
 					 ;
-call				 : ID { savedName = copyString(tokenString); 
+call				 : ID { savedName = copyString(tokenStringNew); 
 						    savedLineNo = lineno; }
 						LPAREN args RPAREN
 						{ $$ = newExpNode(FuncCallK);
@@ -256,7 +270,7 @@ call				 : ID { savedName = copyString(tokenString);
 						}
 					 ;
 args				 : arg_list { $$ = $1; }
-					 |
+					 | %empty { $$ = NULL; }
 					 ;
 arg_list			 : arg_list COMMA expression
 						{ YYSTYPE t = $1;

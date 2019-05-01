@@ -14,6 +14,11 @@
 #include <ctype.h>
 #include <string.h>
 
+#ifndef YYPARSER
+#include "tiny.tab.h"
+#define ENDFILE 0
+#endif
+
 #ifndef FALSE
 #define FALSE 0
 #endif
@@ -49,9 +54,9 @@ extern int lineno; /* source line number for listing */
 /**************************************************/
 
 typedef enum {StmtK,ExpK, DeclarationK} NodeKind;
-typedef enum {IfK,WhileK,AssignK,ReturnK,WriteK} StmtKind;
+typedef enum {IfK,WhileK,AssignK,ReturnK,WriteK, CompoundK} StmtKind;
 typedef enum {OpK,ConstK,IdK,FuncCallK} ExpKind;
-typedef enum {SimpleK, ArrayK, FunctionK, ParamK} DeclarationKind;
+typedef enum {SimpleK, ArrayK, FunctionK, ParamK, DummyK} DeclarationKind;
 
 /* ExpType is used for type checking */
 typedef enum {Void,Integer} ExpType;
@@ -65,8 +70,8 @@ typedef struct treeNode
      NodeKind nodekind;
      union { StmtKind stmt; ExpKind exp; DeclarationKind dec;} kind;
      union { TokenType op;
-             int val;
              char * name; } attr;
+	 int val;
      ExpType expType; /* for type checking of exps */
    } TreeNode;
 
