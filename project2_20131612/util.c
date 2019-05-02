@@ -191,24 +191,16 @@ void printTree( TreeNode * tree )
 					fprintf(listing, "Parameter: (null)\n");
 					UNINDENT;
 				}
-			
-				//printTree(tree->child[0]);
-				//printTree(tree->child[1]);
 				break;
 			case ParamK:
-				if( tree == NULL ){
-					fprintf(listing, "Parameter: (null)\n");
-				}
-				else{
-					fprintf(listing, "Parameter: %s\n", tree->attr.name);
-					INDENT;
-					printSpaces();
-					if( tree->expType == INT )
-						fprintf(listing, "Type: Int\n");
-					else if( tree->expType == VOID )
-						fprintf(listing, "Type: Void\n");
-					UNINDENT;
-				}
+				fprintf(listing, "Parameter: %s\n", tree->attr.name);
+				INDENT;
+				printSpaces();
+				if( tree->expType == INT )
+					fprintf(listing, "Type: Int\n");
+				else if( tree->expType == VOID )
+					fprintf(listing, "Type: Void\n");
+				UNINDENT;
 				break;
 			case ArrayK:
 				fprintf(listing, "ID: %s\n", tree->attr.name);
@@ -229,38 +221,18 @@ void printTree( TreeNode * tree )
     { switch (tree->kind.stmt) {
         case IfK:
           fprintf(listing,"If\n");
-		  /*for(i=0; i<MAXCHILDREN; i++){
-			  if( tree->child[i] != NULL )
-				  printTree(tree->child[i]);
-		  }*/
           break;
 		case WhileK:
 		  fprintf(listing, "While\n");
-		  //printTree( tree->child[0] );
-		  //printTree( tree->child[1] );
 		  break;
 		case ReturnK:
 		  fprintf(listing, "Return\n");
-		  //if( tree->child[0] != NULL )
-			//  printTree( tree->child[0] );
 		  break;
         case AssignK:
           fprintf(listing,"Op: =\n");
-		  //printTree( tree->child[0] );
-		  //printTree( tree->child[1] );
           break;
 		case CompoundK:
           fprintf(listing,"Compound statement\n");
-		  /*TreeNode *tmp = tree->child[0]; // Declaration Part in Compound statement 
-		  while(tmp != NULL){
-			  printTree(tmp);
-			  tmp = tmp->sibling;
-		  }
-		  tmp = tree->child[1]; // Statemet_list Part in Compound statement 
-		  while(tmp != NULL){
-			  printTree(tmp);
-			  tmp = tmp->sibling;
-		  }*/
 		  break;
         default:
           fprintf(listing,"Unknown ExpNode kind\n");
@@ -281,8 +253,6 @@ void printTree( TreeNode * tree )
           break;
 		case FuncCallK:
 		  fprintf(listing, "Call procedure: %s\n", tree->attr.name);
-		  //if( tree->child[0] != NULL )
-			//  printTree(tree->child[0]);
 		  break;
         default:
           fprintf(listing,"Unknown ExpNode kind\n");
