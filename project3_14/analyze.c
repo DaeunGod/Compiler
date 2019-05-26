@@ -60,6 +60,44 @@ static void nullProc(TreeNode *t)
     return;
 }
 
+/* TODO
+ */
+int _checkDuplicatedSymbol(TreeNode *t, SearchFlag searchFlag){
+  if (st_lookup(t->attr.name, searchFlag) != -1)
+  {
+    fprintf(listing, "ERROR in line %d, declaration of a duplicated '%s'. first declared at line %d\n", 
+            t->lineno, t->attr.name, st_lookupLineNo(t->attr.name));
+    isErrorOccurred = TRUE;
+    return 0;
+  }
+  return 1;
+}
+
+/* TODO
+ */
+int _checkVariableTypeInDec(TreeNode *t, SymbolInfo info){
+  int flag = 0;
+  char *str = NULL;
+  if( info->decKind == SimpleK ){
+    flag = 1;
+    str = "Variable";
+  } else if( info->decKind == ArrayK){
+    flag = 1;
+    str = "Array";
+  } else if( info->decKind == ParamK){
+    flag = 1;
+    str = "Parameter";
+  }
+  if( flag && info->expType != Integer ){
+    fprintf(listing, "ERROR in line %d, %s(name: %s) must declared as integer not void.\n", 
+          t->lineno, str, t->attr.name);
+    isErrorOccurred = TRUE;
+    return 0;
+  }
+  
+  return 1;
+}
+
 /* Procedure insertNode inserts 
  * identifiers stored in t into 
  * the symbol table 
@@ -141,41 +179,8 @@ static void insertNode(TreeNode *t, int scopeIn)
     } else if (t->nodekind == DeclarationK) {
       switch (t->kind.dec)
       {
-      case SimpleK:
-        if (st_lookup(t->attr.name, LocalNFunc) != -1)
-        {
-          fprintf(listing, "ERROR in line %d, declaration of a duplicated '%s'. first declared at line %d\n", 
-            t->lineno, t->attr.name, st_lookupLineNo(t->attr.name));
-          isErrorOccurred = TRUE;
-        }
-        else
-        {
-          info = getSymbolInfo(t);
-          st_insert(t->attr.name, t->lineno, 0, info);
-        }
-        break;
-      case ArrayK:
-        if (st_lookup(t->attr.name, LocalNFunc) != -1)
-        {
-          fprintf(listing, "ERROR in line %d, declaration of a duplicated '%s'. first declared at line %d\n", 
-            t->lineno, t->attr.name, st_lookupLineNo(t->attr.name));
-          isErrorOccurred = TRUE;
-        }
-        else
-        {
-          info = getSymbolInfo(t);
-          st_insert(t->attr.name, t->lineno, 0, info);
-        }
-        break;
       case FunctionK:
-      if (st_lookup(t->attr.name, LocalNFunc) != -1)
-        {
-          fprintf(listing, "ERROR in line %d, declaration of a duplicated '%s'. first declared at line %d\n", 
-            t->lineno, t->attr.name, st_lookupLineNo(t->attr.name));
-          isErrorOccurred = TRUE;
-        }
-        else
-        {
+        if( _checkDuplicatedSymbol(t, LocalNFunc) ){
           info = getSymbolInfo(t);
           st_insert(t->attr.name, t->lineno, 0, info);
           st_scopeIn();
@@ -183,17 +188,16 @@ static void insertNode(TreeNode *t, int scopeIn)
           insertNode(t->child[1], TRUE); // Compound Part
         }
         break;
+      case SimpleK:
+      case ArrayK:
       case ParamK:
-        if (st_lookup(t->attr.name, LocalNFunc) != -1)
-        {
-          fprintf(listing, "ERROR in line %d, declaration of a duplicated '%s'. first declared at line %d\n", 
-            t->lineno, t->attr.name, st_lookupLineNo(t->attr.name));
-          isErrorOccurred = TRUE;
-        }
-        else
-        {
+        if( _checkDuplicatedSymbol(t, LocalNFunc) ){
           info = getSymbolInfo(t);
-          st_insert(t->attr.name, t->lineno, 0, info);
+          if( _checkVariableTypeInDec(t, info) ){
+            st_insert(t->attr.name, t->lineno, 0, info);
+          } else {
+            free(info);
+          }
         }
         break;
       default:
