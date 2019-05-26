@@ -95,7 +95,7 @@ fun_declaration	 : type_specifier ID { savedFuncName = copyString(tokenStringNew
 					LPAREN params RPAREN compound_stmt
 					{ $$ = newDecNode(FunctionK);
 						$$->attr.name = savedFuncName;
-						$$->lineno = savedLineNo;
+						$$->lineno = lineno;
 						$$->child[0] = $5;
 						$$->child[1] = $7;
 						$$->expType = $1->expType;

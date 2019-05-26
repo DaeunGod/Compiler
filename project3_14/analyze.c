@@ -17,6 +17,10 @@ static int location = 0;
  */
 static int isErrorOccurred = FALSE;
 
+void debugLog(char * str){
+  printf("DEBUG: %s\n", str);
+}
+
 /* Procedure traverse is a generic recursive 
  * syntax tree traversal routine:
  * it applies preProc in preorder and postProc 
@@ -60,23 +64,35 @@ static void nullProc(TreeNode *t)
  * identifiers stored in t into 
  * the symbol table 
  */
-static void insertNode(TreeNode *t)
+static void insertNode(TreeNode *t, int scopeIn)
 {
   SymbolInfo info = NULL;
-  //int i = 0;
-  //while (t != NULL)
-  //{
+  int i = 0;
+  while( t != NULL )
+  {
+    if( isErrorOccurred == TRUE )
+      break;
+
     if( t->nodekind == StmtK){
       switch (t->kind.stmt)
       {
       case AssignK:
       case IfK:
-        break;
       case WhileK:
-        break;
       case ReturnK:
+        for(i=0; i<MAXCHILDREN; i++){
+          insertNode(t->child[i], FALSE);
+        }
         break;
-      case CompoundK:
+      case CompoundK:        
+        if( scopeIn == FALSE )
+          st_scopeIn();
+
+        for(i=0; i<MAXCHILDREN; i++){
+          insertNode(t->child[i], FALSE);
+        }
+
+        st_scopeOut();
         break;
       default:
         break;
@@ -85,11 +101,11 @@ static void insertNode(TreeNode *t)
       switch (t->kind.exp)
       {
       case IdK:
-        if (st_lookup(t->attr.name) == -1)
+        if (st_lookup(t->attr.name, Full) == -1)
         {
           /* not yet in table, so treat as new definition */
           //st_insert(t->attr.name,t->lineno,location++);
-          fprintf(listing, "ERROR, No Variable Need to declarate First\n");
+          fprintf(listing, "ERROR in line %d, use of undeclared identifier '%s'\n", t->lineno, t->attr.name);
           isErrorOccurred = TRUE;
         }
         else
@@ -97,21 +113,26 @@ static void insertNode(TreeNode *t)
           /* already in table, so ignore location, 
              	add line number of use only */
           st_insert(t->attr.name, t->lineno, 0, NULL);
+          insertNode(t->child[0], FALSE); // It will proceed If ID is Array
         }
         break;
       case OpK:
+        for(i=0; i<MAXCHILDREN; i++){
+          insertNode(t->child[i], FALSE);
+        }
         break;
       case ConstK:
         break;
       case FuncCallK:
-        if (st_lookup(t->attr.name) == -1)
+        if (st_lookup(t->attr.name, Full) == -1)
         {
-          fprintf(listing, "ERROR, No function Need to declarate First\n");
+          fprintf(listing, "ERROR in line %d, use of undeclared function '%s'\n", t->lineno, t->attr.name);
           isErrorOccurred = TRUE;
         }
         else
         {
           st_insert(t->attr.name, t->lineno, 0, NULL);
+          insertNode(t->child[0], FALSE);
         }
         break;
       default:
@@ -121,28 +142,67 @@ static void insertNode(TreeNode *t)
       switch (t->kind.dec)
       {
       case SimpleK:
-        info = getSymbolInfo(t);
-        st_insert(t->attr.name, t->lineno, 0, info);
+        if (st_lookup(t->attr.name, LocalNFunc) != -1)
+        {
+          fprintf(listing, "ERROR in line %d, declaration of a duplicated '%s'. first declared at line %d\n", 
+            t->lineno, t->attr.name, st_lookupLineNo(t->attr.name));
+          isErrorOccurred = TRUE;
+        }
+        else
+        {
+          info = getSymbolInfo(t);
+          st_insert(t->attr.name, t->lineno, 0, info);
+        }
         break;
       case ArrayK:
-        info = getSymbolInfo(t);
-        st_insert(t->attr.name, t->lineno, 0, info);
+        if (st_lookup(t->attr.name, LocalNFunc) != -1)
+        {
+          fprintf(listing, "ERROR in line %d, declaration of a duplicated '%s'. first declared at line %d\n", 
+            t->lineno, t->attr.name, st_lookupLineNo(t->attr.name));
+          isErrorOccurred = TRUE;
+        }
+        else
+        {
+          info = getSymbolInfo(t);
+          st_insert(t->attr.name, t->lineno, 0, info);
+        }
         break;
       case FunctionK:
-        info = getSymbolInfo(t);
-        st_insert(t->attr.name, t->lineno, 0, info);
+      if (st_lookup(t->attr.name, LocalNFunc) != -1)
+        {
+          fprintf(listing, "ERROR in line %d, declaration of a duplicated '%s'. first declared at line %d\n", 
+            t->lineno, t->attr.name, st_lookupLineNo(t->attr.name));
+          isErrorOccurred = TRUE;
+        }
+        else
+        {
+          info = getSymbolInfo(t);
+          st_insert(t->attr.name, t->lineno, 0, info);
+          st_scopeIn();
+          insertNode(t->child[0], FALSE); // Parameter part
+          insertNode(t->child[1], TRUE); // Compound Part
+        }
         break;
       case ParamK:
-        info = getSymbolInfo(t);
-        st_insert(t->attr.name, t->lineno, 0, info);
+        if (st_lookup(t->attr.name, LocalNFunc) != -1)
+        {
+          fprintf(listing, "ERROR in line %d, declaration of a duplicated '%s'. first declared at line %d\n", 
+            t->lineno, t->attr.name, st_lookupLineNo(t->attr.name));
+          isErrorOccurred = TRUE;
+        }
+        else
+        {
+          info = getSymbolInfo(t);
+          st_insert(t->attr.name, t->lineno, 0, info);
+        }
         break;
       default:
         break;
       }
     }
-
-    //t = t->sibling;
-  //}
+    t = t->sibling;
+  }
+  
 }
 
 /* Function buildSymtab constructs the symbol 
@@ -151,8 +211,9 @@ static void insertNode(TreeNode *t)
 void buildSymtab(TreeNode *syntaxTree)
 {
   st_scopeIn();
-  traverse(syntaxTree, insertNode, nullProc);
-  if (TraceAnalyze)
+  //traverse(syntaxTree, insertNode, nullProc);
+  insertNode(syntaxTree, FALSE);
+  if ( !isErrorOccurred && TraceAnalyze )
   {
     fprintf(listing, "\nSymbol table:\n\n");
     printSymTab(listing);
@@ -221,5 +282,6 @@ static void checkNode(TreeNode *t)
  */
 void typeCheck(TreeNode *syntaxTree)
 {
-  traverse(syntaxTree, nullProc, checkNode);
+  checkNode(syntaxTree);
+  //traverse(syntaxTree, nullProc, checkNode);
 }

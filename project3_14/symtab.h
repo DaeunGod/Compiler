@@ -10,13 +10,17 @@
 #define _SYMTAB_H_
 
 #include "globals.h"
+#include "tiny.tab.h"
 
 typedef struct SymbolInfoRec{
 	NodeKind nodekind;
-	ExpType expType;
+	DeclarationKind decKind;
+	int expType;
 	int isArray;
-
+	int ArraySize;
 } * SymbolInfo;
+
+typedef enum {Full, Local, LocalNFunc} SearchFlag;
 
 /* Procedure st_insert inserts line numbers and
  * memory locations into the symbol table
@@ -28,7 +32,11 @@ void st_insert( char * name, int lineno, int loc, SymbolInfo info );
 /* Function st_lookup returns the memory 
  * location of a variable or -1 if not found
  */
-int st_lookup ( char * name );
+int st_lookup ( char * name, SearchFlag searchFlag );
+
+/* TOOD
+ */
+int st_lookupLineNo(char *name);
 
 /* Procedure printSymTab prints a formatted 
  * listing of the symbol table contents 

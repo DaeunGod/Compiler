@@ -84,29 +84,51 @@ static BlockStructure hashTableCurrent = NULL;
 
 /* TODO
  */
+SymbolInfo _createSymbolInfo(){
+	SymbolInfo info = (SymbolInfo)malloc(sizeof(struct SymbolInfoRec));
+	info->nodekind = StmtK;
+	info->isArray = FALSE;
+	info->ArraySize = -1;
+	info->decKind = DummyK;
+	info->expType = Void;
+	return info;
+}
+
+/* TODO
+ */
 SymbolInfo getSymbolInfo(TreeNode *tree)
 {
-	SymbolInfo info = (SymbolInfo)malloc(sizeof(struct SymbolInfoRec));
-
+	SymbolInfo info = _createSymbolInfo();
 	NodeKind nodekind = tree->nodekind;
 	info->nodekind = nodekind;
-	info->isArray = FALSE;
+	
+	if( tree->expType == INT ){
+		info->expType = Integer;
+	} else if( tree->expType == VOID) {
+		info->expType = Void;
+	}
+
 	if (nodekind == DeclarationK)
 	{
 		switch (tree->kind.dec)
 		{
 		case FunctionK:
-			info->expType = tree->expType;
+			//info->expType = tree->expType;
+			info->decKind = FunctionK;
 			break;
 		case ParamK:
-			info->expType = tree->expType;
+			//info->expType = tree->expType;
+			info->decKind = ParamK;
 			break;
 		case ArrayK:
-			info->expType = tree->expType;
+			//info->expType = tree->expType;
 			info->isArray = TRUE;
+			info->ArraySize = tree->val;
+			info->decKind = ArrayK;
 			break;
 		case SimpleK:
-			info->expType = tree->expType;
+			//info->expType = tree->expType;
+			info->decKind = SimpleK;
 			break;
 		}
 	}
@@ -173,10 +195,12 @@ void st_insert(char *name, int lineno, int loc, SymbolInfo info)
 		{
 			break;
 		}
-		cur = cur->before;
+		if( info != NULL && info->nodekind == DeclarationK)
+			break;
+		else
+			cur = cur->before;
 	}
-	if (l == NULL)
-	{
+	if (l == NULL) {
 		if( info == NULL ){
 			fprintf(listing, "Hash insert Error\n");
 		}
@@ -187,42 +211,82 @@ void st_insert(char *name, int lineno, int loc, SymbolInfo info)
 		l->lines->next = NULL;
 		l->memloc = loc;
 		l->info = info;
-		l->next = cur->hashTable[h];
-		cur->hashTable[h] = l;
-	}
-	else
-	{
+		l->next = hashTableCurrent->hashTable[h];
+		
+		hashTableCurrent->hashTable[h] = l;
+		
+	} else {
+		int flag = 0;
 		LineList t = l->lines;
-		while (t->next != NULL)
+		while (t->next != NULL){
+			if( t->lineno == lineno ){
+				flag = 1;
+				break;
+			}
 			t = t->next;
-		t->next = (LineList)malloc(sizeof(struct LineListRec));
-		t->next->lineno = lineno;
-		t->next->next = NULL;
+		}
+		if( t->lineno == lineno )
+			flag = 1;
+
+		if( flag == 0 ){
+			t->next = (LineList)malloc(sizeof(struct LineListRec));
+			t->next->lineno = lineno;
+			t->next->next = NULL;
+		}
 	}
-	/*while ((l != NULL) && (strcmp(name,l->name) != 0))
-    l = l->next;
-  if (l == NULL) // variable not yet in table 
-  { l = (BucketList) malloc(sizeof(struct BucketListRec));
-    l->name = name;
-    l->lines = (LineList) malloc(sizeof(struct LineListRec));
-    l->lines->lineno = lineno;
-    l->memloc = loc;
-    l->lines->next = NULL;
-    l->next = hashTable[h];
-    hashTable[h] = l; }
-  else // found in table, so just add line number 
-  { LineList t = l->lines;
-    while (t->next != NULL) t = t->next;
-    t->next = (LineList) malloc(sizeof(struct LineListRec));
-    t->next->lineno = lineno;
-    t->next->next = NULL;
-  }*/
 } /* st_insert */
 
 /* Function st_lookup returns the memory 
  * location of a variable or -1 if not found
  */
-int st_lookup(char *name)
+int st_lookup(char *name, SearchFlag searchFlag)
+{
+	int h = hash(name);
+	BlockStructure cur = hashTableCurrent;
+	BucketList l = NULL;
+	int symbolFind = 0;
+	
+	while (cur != NULL)
+	{
+		l = cur->hashTable[h];
+		while ((l != NULL))
+		{
+			if (strcmp(name, l->name) == 0)
+			{
+				symbolFind = 1;
+				if( hashTableCurrent != cur && searchFlag == LocalNFunc ){		
+					if( l->info->decKind != FunctionK ){
+						symbolFind = 0;
+					}
+				}
+				break;
+			}
+			l = l->next;
+		}
+
+		if (symbolFind == 1)
+		{
+			break;
+		}
+		if( searchFlag == Full || searchFlag == LocalNFunc)
+			cur = cur->before;
+		else
+			break;
+	}
+
+	if (l == NULL)
+	{
+		return -1;
+	}
+	else
+	{
+		return l->memloc;
+	}
+}
+
+/* TODO
+ */
+int st_lookupLineNo(char *name)
 {
 	int h = hash(name);
 	BlockStructure cur = hashTableCurrent;
@@ -247,48 +311,98 @@ int st_lookup(char *name)
 		}
 		cur = cur->before;
 	}
+
 	if (l == NULL)
 	{
 		return -1;
 	}
 	else
 	{
-		return l->memloc;
+		return l->lines->lineno;
 	}
 }
 
 /* TODO
  */
-void _printSymTab(BlockStructure t)
+char* _symkindToStr(DeclarationKind DecKind){
+	//{SimpleK, ArrayK, FunctionK, ParamK, DummyK} DeclarationKind;
+	if(DecKind == SimpleK || DecKind == ArrayK){
+		return "Variable";
+	} else if(DecKind == FunctionK){
+		return "Function";
+	} else if(DecKind == ParamK){
+		return "Parameter";
+	} else {
+		return "DecKind Error";
+	}
+}
+
+/* TODO
+ */
+char* _expTypeToStr(int expType){
+	//{SimpleK, ArrayK, FunctionK, ParamK, DummyK} DeclarationKind;
+	if(expType == Integer ){
+		return "int";
+	} else if(expType == Void){
+		return "void";
+	} else {
+		return "ExpType Error";
+	}
+}
+
+/* TODO
+ */
+void _printSymTab(FILE *listing, BlockStructure t)
 {
-	while (t != NULL)
+	int showInfoFlag = 0;
+	//while (t != NULL)
+	if( t != NULL )
 	{
-		//fprintf(listing, "%s", "Here");
 		int i = 0;
 		for (i = 0; i < SIZE; i++)
 		{
 			BucketList symbol = t->hashTable[i];
+			if( showInfoFlag == 0 ){
+					showInfoFlag = 1;
+					fprintf(listing, "Scope\tName\tLoc\tV/P/F\t\tArray?\tArraySize\tType\tLineNumbers\n");
+					fprintf(listing, "----------------------------------\n");
+			}
 			if (symbol != NULL)
-			{
+			{	
 				LineList pLine = symbol->lines;
-				fprintf(listing, "%d", t->depth);
-				fprintf(listing, "%s", symbol->name);
+				fprintf(listing, "%d\t", t->depth);
+				fprintf(listing, "%s\t", symbol->name);
+				fprintf(listing, "%d\t", symbol->memloc);
+				fprintf(listing, "%s\t", _symkindToStr(symbol->info->decKind));
+				if( symbol->info->isArray ){
+					fprintf(listing, "YES\t%d\t\t", symbol->info->ArraySize);
+				} else {
+					fprintf(listing, "NO\t%s\t\t", "-");
+				}
+				//fprintf(listing, "%d\t", (symbol->info->expType));
+				fprintf(listing, "%s\t", _expTypeToStr(symbol->info->expType));
+				
 				/* ... */
-				while (pLine != NULL)
+				while (pLine->next != NULL)
 				{
-					fprintf(listing, "%d", pLine->lineno);
+					fprintf(listing, "%d, ", pLine->lineno);
 					pLine = pLine->next;
 				}
+				fprintf(listing, "%d", pLine->lineno);
+				printf("\n");
 			}
 		}
-
-		_printSymTab(t->next);
+		fprintf(listing, "\n");
+		
+		_printSymTab(listing, t->next);
 		BlockStructure s = t->sibling;
-		while (s != NULL)
+		//while (s != NULL)
+		if( s != NULL )
 		{
-			_printSymTab(s);
+			_printSymTab(listing, s);
 			s = s->sibling;
 		}
+		//t = t->sibling;
 	}
 }
 
@@ -299,9 +413,10 @@ void _printSymTab(BlockStructure t)
 void printSymTab(FILE *listing)
 {
 	int i;
-	fprintf(listing, "Depth Name  Scope  Loc  V/P/F  Array?  ArraySize Type LineNumbers\n");
-	fprintf(listing, "----------------------------------\n");
-	_printSymTab(hashTableTop);
+	//fprintf(listing, "Scope Name Loc  V/P/F  Array?  ArraySize Type LineNumbers\n");
+	//fprintf(listing, "Scope\tName\tLoc\tV/P/F\t\tArray?\tArraySize\tType\tLineNumbers\n");
+	//fprintf(listing, "----------------------------------\n");
+	_printSymTab(listing, hashTableTop);
 	//while(
 	/*for (i=0;i<SIZE;++i)
   { if (hashTable[i] != NULL)
@@ -323,7 +438,11 @@ void printSymTab(FILE *listing)
 
 BlockStructure makeHashNode()
 {
+	int i=0;
 	BlockStructure tmp = (BlockStructure)malloc(sizeof(struct BlockStructureRec));
+	for(i=0; i<SIZE; i++){
+		tmp->hashTable[i] = NULL;
+	}
 	tmp->next = tmp->before = NULL;
 	tmp->sibling = NULL;
 	tmp->depth = -1;
