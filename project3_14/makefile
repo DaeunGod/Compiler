@@ -5,7 +5,7 @@ BISON = bison
 CFLAGS =
 
 OBJS = lex.yy.o tiny.tab.o main.o util.o analyze.o symtab.o
-TARGET = 20131612
+TARGET = project3_14
 
 all: ${TARGET}
 

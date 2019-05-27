@@ -87,7 +87,7 @@ void testing();
  
  */
 void st_scopeIn();
-void st_scopeMove(int flag);
+int st_scopeMove(int flag);
 void st_scopeOut();
 SymbolInfo getSymbolInfo(TreeNode * tree);
 void inssertParamlInfo(SymbolInfo info, char* name, ExpType expType);

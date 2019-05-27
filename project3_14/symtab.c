@@ -546,13 +546,15 @@ void st_scopeIn()
 /* 0 - next
 	1 - sibling
  */
-void st_scopeMove(int flag){
+int st_scopeMove(int flag){
 	int i=0;
+	int errorFlag = 0;
 	if( flag == 0 ){
 		if(hashTableCurrent->next != NULL){
 			hashTableCurrent = hashTableCurrent->next;
 		} else {
 			printf("move scope next error\n");	
+			errorFlag = 1;
 		}
 	} else {
 		hashTableCurrent = hashTableCurrent->next;
@@ -560,12 +562,14 @@ void st_scopeMove(int flag){
 			if(hashTableCurrent->sibling != NULL ){
 				hashTableCurrent = hashTableCurrent->sibling;
 			} else {
+				testing();
 				printf("move scope sibling error\n");	
+				errorFlag = 1;
 				break;
 			}
 		}
 	}
-	
+	return errorFlag;
 }
 
 void st_scopeOut()

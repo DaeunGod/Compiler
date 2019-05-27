@@ -214,13 +214,13 @@ static int insertNode(TreeNode *t, int scopeIn, char* callFrom, int memloc)
             }
             
             st_insert(t->attr.name, t->lineno, memloc, info);
-            if( callFrom != NULL ){
-              SymbolInfo callFuncInfo = st_lookupInfo(callFrom);
-              if( info->isArray )
-                inssertParamlInfo(callFuncInfo, t->attr.name, Array);
-              else
-                inssertParamlInfo(callFuncInfo, t->attr.name, info->expType);
-            }
+            // if( callFrom != NULL ){
+            //   SymbolInfo callFuncInfo = st_lookupInfo(callFrom);
+            //   if( info->isArray )
+            //     inssertParamlInfo(callFuncInfo, t->attr.name, Array);
+            //   else
+            //     inssertParamlInfo(callFuncInfo, t->attr.name, info->expType);
+            // }
           } else {
             free(info);
           }
@@ -237,16 +237,16 @@ static int insertNode(TreeNode *t, int scopeIn, char* callFrom, int memloc)
               localVarLoc -= 4*info->ArraySize;
             }
             st_insert(t->attr.name, t->lineno, memloc, info);
-            if( callFrom != NULL ){
-              SymbolInfo callFuncInfo = st_lookupInfo(callFrom);
-              if( info->isArray )
-                inssertParamlInfo(callFuncInfo, t->attr.name, Array);
-              else
-                inssertParamlInfo(callFuncInfo, t->attr.name, info->expType);
-            }
+            // if( callFrom != NULL ){
+            //   SymbolInfo callFuncInfo = st_lookupInfo(callFrom);
+            //   if( info->isArray )
+            //     inssertParamlInfo(callFuncInfo, t->attr.name, Array);
+            //   else
+            //     inssertParamlInfo(callFuncInfo, t->attr.name, info->expType);
+            // }
           } else {
             free(info);
-          }
+          } 
         }
       break;
       case ParamK:
@@ -287,6 +287,7 @@ void buildSymtab(TreeNode *syntaxTree)
   st_scopeIn();
   //traverse(syntaxTree, insertNode, nullProc);
   insertNode(syntaxTree, FALSE, NULL, 0);
+  //printSymTab(listing);
   
 }
 
@@ -308,6 +309,7 @@ static ExpType checkNode(TreeNode *t, int scopeIn, int siblingCount, char* callF
   ExpType res = Dummy;
   ParamInfo pp1;
   int i = 0;
+  int errorcheck=0;
   
   //while( t != NULL )
   if( t != NULL && !isErrorOccurred )
@@ -320,11 +322,10 @@ static ExpType checkNode(TreeNode *t, int scopeIn, int siblingCount, char* callF
       switch (t->kind.stmt)
       {
       case AssignK:
-        //printf("boom3 here\n");
         e1 = checkNode(t->child[0], FALSE, 0, callFrom);
         e2 = checkNode(t->child[1], FALSE, 0, callFrom);
         
-        if( e2 != Integer ){
+        if( !isErrorOccurred && e2 != Integer ){
           isErrorOccurred = TRUE;
           typeError(t, "right side's type from assign should be integer not void");
           break;
@@ -332,10 +333,16 @@ static ExpType checkNode(TreeNode *t, int scopeIn, int siblingCount, char* callF
         res = e1;
         break;
       case IfK:
-        //printf("boom here\n");
         e1 = checkNode(t->child[0], FALSE, 0, callFrom);
-        checkNode(t->child[1], FALSE, 0, callFrom);
-        checkNode(t->child[2], FALSE, 0, callFrom);
+        checkNode(t->child[1], FALSE, siblingCount, callFrom); // compound stat
+        if( t->child[1]->kind.stmt == CompoundK)
+          siblingCount++;
+        if( t->child[2] != NULL){
+          checkNode(t->child[2], FALSE, siblingCount, callFrom); // compound stat
+          if( t->child[1]->kind.stmt == CompoundK)
+            siblingCount++;
+        }
+        
         if( e1 != Integer ){
           isErrorOccurred = TRUE;
           typeError(t, "expression part of if statement should be type of integer not void");
@@ -343,9 +350,11 @@ static ExpType checkNode(TreeNode *t, int scopeIn, int siblingCount, char* callF
         break;
       case WhileK:
         e1 = checkNode(t->child[0], FALSE, 0, callFrom);
-        checkNode(t->child[1], FALSE, 0, callFrom);
+        checkNode(t->child[1], FALSE, siblingCount, callFrom); // compound stat
+        siblingCount++;
         if( e1 != Integer ){
           isErrorOccurred = TRUE;
+          typeError(t, "expression part of while statement should be type of integer not void");
         }
         break;
       case ReturnK:
@@ -355,12 +364,13 @@ static ExpType checkNode(TreeNode *t, int scopeIn, int siblingCount, char* callF
         break;
       case CompoundK:
         if( scopeIn == FALSE ){
+          //printf("sibl %d %d\n", siblingCount, scopeIn);
           st_scopeMove(siblingCount);
           siblingCount++;
         }
-        for(i=0; i<MAXCHILDREN; i++){
-          checkNode(t->child[i], FALSE, 0, callFrom);
-        }
+        
+        checkNode(t->child[0], FALSE, 0, callFrom);
+        checkNode(t->child[1], FALSE, 0, callFrom);
         st_scopeOut();
         break;
       default:
@@ -370,7 +380,6 @@ static ExpType checkNode(TreeNode *t, int scopeIn, int siblingCount, char* callF
       switch (t->kind.exp)
       {
       case IdK:
-        //printf("boom4 here %d %s\n", siblingCount, t->attr.name);
         info = st_lookupInfo(t->attr.name);
         if( info->isArray ){
           if( t->child[0] != NULL ){
@@ -385,11 +394,17 @@ static ExpType checkNode(TreeNode *t, int scopeIn, int siblingCount, char* callF
             res = Array;
           }
         } else {
+          if(t->child[0] != NULL){
+            char str[256];
+            sprintf(str, "'%s' is not array variable.", t->attr.name);
+            typeError(t->child[0], str);
+            isErrorOccurred = TRUE;
+            break;
+          }
           res = info->expType;
         }
         break;
       case OpK:
-        //printf("boom2 here\n");
         e1 = checkNode(t->child[0], FALSE, 0, callFrom);
         e2 = checkNode(t->child[1], FALSE, 0, callFrom);
         if( isErrorOccurred ){
@@ -408,7 +423,13 @@ static ExpType checkNode(TreeNode *t, int scopeIn, int siblingCount, char* callF
         break;
       case FuncCallK:
         info = st_lookupInfo(t->attr.name);
-        
+        if( info->decKind != FunctionK ){
+          char str[256];
+          sprintf(str, "'%s' is not function", t->attr.name);
+          typeError(t, str);
+          isErrorOccurred = TRUE;
+          break;
+        }
         pp1 = info->p;
         p2 = t->child[0];
         
@@ -416,22 +437,27 @@ static ExpType checkNode(TreeNode *t, int scopeIn, int siblingCount, char* callF
           isErrorOccurred = TRUE;
         }
         while( !isErrorOccurred && pp1 != NULL && p2 != NULL ){
-          //printf("\tname:%s %s\n", pp1->name, p2->attr.name);
-          //e1 = checkNode(p1, FALSE, 0);
           e1 = pp1->expType;
-          //printf("\tname2:%s %s\n", pp1->name, p2->attr.name);
           e2 = checkNode(p2, FALSE, 0, callFrom);
           
           if( (e1 != e2) ){
             isErrorOccurred = TRUE;
-            //printf("here2 %s %s %d %d\n", p1->attr.name, p2->attr.name, e1, e2);
             break;
           }
-          //p1 = p1->sibling;
           pp1 = pp1->next;
           p2 = p2->sibling;
         }
-        //printf("boom\n");
+        if( !isErrorOccurred && pp1 != NULL ){
+          typeError(t, "not enough parameters");
+          isErrorOccurred = TRUE;
+          break;
+        }
+        if( !isErrorOccurred && p2 != NULL){
+          typeError(t, "too many parameters");
+          isErrorOccurred = TRUE;
+          break;
+        }
+
         if( isErrorOccurred == TRUE ){
           char str[256];
           sprintf(str, "type miss match using '%s' function", t->attr.name);
@@ -468,7 +494,6 @@ static ExpType checkNode(TreeNode *t, int scopeIn, int siblingCount, char* callF
             break;
           }
         }
-        //printf("boom5 here %s %d\n", t->attr.name, siblingCount);
         checkNode(t->child[0], FALSE, 0, t->attr.name); // Parameter part
         checkNode(t->child[1], TRUE, 0, t->attr.name); // Compound part
         if( info->expType == Void ){
@@ -489,20 +514,20 @@ static ExpType checkNode(TreeNode *t, int scopeIn, int siblingCount, char* callF
       case ArrayK:
       case ParamK:
         info = st_lookupInfo(t->attr.name);
-        //testing();
-        //printf("boom4 continue\n");
+        // testing();
+        // if( info == NULL ){
+        //   printf("info null error\n");
+        // }
         if( info->isArray )
           res = Array;
         else
           res = info->expType;
-        //printf("boom4 continue\n");
         break;
       default:
         break;
       }
     }
     if( t->sibling != NULL ) {
-      //st_scopeMove(1);
       checkNode( t->sibling, FALSE, siblingCount, callFrom);
     }
     //t = t->sibling;
