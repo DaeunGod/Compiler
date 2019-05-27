@@ -1,4 +1,6 @@
-void a[10];
+int func(void a){
+    ;
+}
 
 void main(void){
     ;

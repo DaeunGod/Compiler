@@ -15,5 +15,5 @@ void func(void){
 void main(void){
     int a;
 
-    a = funa() + funb() + func();
+    a = funa() + funb() * func();
 }

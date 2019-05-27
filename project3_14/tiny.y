@@ -15,6 +15,7 @@
 #define YYSTYPE TreeNode *
 static char * savedName; /* for use in assignments */
 static char * savedFuncName;
+static char * savedFuncCallName;
 static int savedLineNo;  /* ditto */
 static char * savedValue; /* for use declaration ADD PRJ2 */
 static ExpType savedType; /* for use DataType ADd PRJ2 */
@@ -85,6 +86,7 @@ var_declaration  : type_specifier ID { savedName = copyString(tokenStringNew);
 						$$->lineno = savedLineNo;
 						$$->val = atoi(savedValue);
 						$$->expType = $1->expType;
+						$$->isArray = 1;
                  	}
             	 ;
 type_specifier	 : INT { savedType = INT;  $$ = newDecNode(DummyK); $$->expType = INT;}
@@ -128,6 +130,7 @@ param			 : type_specifier ID
 						$$->attr.name = savedName;
 						$$->lineno = savedLineNo;
 						$$->expType = savedType;
+						$$->isArray = 1;
 					}
 				 ;
 compound_stmt	 : LBRACE local_declarations statement_list RBRACE
@@ -213,6 +216,7 @@ var					 : ID
 							$$->attr.name = savedName;
 							$$->lineno = savedLineNo;
 							$$->child[0] = $4;
+							$$->isArray = 1;
 						}
 					 ;
 simple_expression	 : additive_expression relop additive_expression
@@ -260,11 +264,11 @@ factor				 : LPAREN expression RPAREN { $$ = $2; }
 							$$->val = atoi(tokenString);
 						}
 					 ;
-call				 : ID { savedName = copyString(tokenStringNew); 
+call				 : ID { savedFuncCallName = copyString(tokenStringNew); 
 						    savedLineNo = lineno; }
 						LPAREN args RPAREN
 						{ $$ = newExpNode(FuncCallK);
-							$$->attr.name = savedName;
+							$$->attr.name = savedFuncCallName;
 							$$->lineno = savedLineNo;
 							$$->child[0] = $4;
 						}

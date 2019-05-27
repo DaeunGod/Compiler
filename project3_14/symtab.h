@@ -12,12 +12,43 @@
 #include "globals.h"
 #include "tiny.tab.h"
 
+/* the list of line numbers of the source 
+ * code in which a variable is referenced
+ */
+typedef struct LineListRec
+{
+	int lineno;
+	struct LineListRec *next;
+} * LineList;
+
+/* The record in the bucket lists for
+ * each variable, including name, 
+ * assigned memory location, and
+ * the list of line numbers in which
+ * it appears in the source code
+ */
+typedef struct BucketListRec
+{
+	char *name;
+	LineList lines;
+	int memloc; /* memory location for variable */
+	struct BucketListRec *next;
+	struct SymbolInfoRec *info;
+} * BucketList;
+
+typedef struct ParamInfoRec
+{
+	ExpType expType;
+	struct ParamInfoRec * next;
+} * ParamInfo
+
 typedef struct SymbolInfoRec{
 	NodeKind nodekind;
 	DeclarationKind decKind;
 	int expType;
 	int isArray;
 	int ArraySize;
+	TreeNode *params;
 } * SymbolInfo;
 
 typedef enum {Full, Local, LocalNFunc} SearchFlag;
@@ -38,16 +69,23 @@ int st_lookup ( char * name, SearchFlag searchFlag );
  */
 int st_lookupLineNo(char *name);
 
+/* TOOD
+ */
+SymbolInfo st_lookupInfo(char *name);
+
 /* Procedure printSymTab prints a formatted 
  * listing of the symbol table contents 
  * to the listing file
  */
 void printSymTab(FILE * listing);
 
+void testing();
+
 /* TODO
  
  */
 void st_scopeIn();
+void st_scopeMove(int flag);
 void st_scopeOut();
 SymbolInfo getSymbolInfo(TreeNode * tree);
 

@@ -34,15 +34,6 @@ static int hash(char *key)
 	return temp;
 }
 
-/* the list of line numbers of the source 
- * code in which a variable is referenced
- */
-typedef struct LineListRec
-{
-	int lineno;
-	struct LineListRec *next;
-} * LineList;
-
 /* TODO
 
  */
@@ -50,20 +41,6 @@ typedef struct LineListRec
 //	ExpType expType;
 //} * SymbolInfo;
 
-/* The record in the bucket lists for
- * each variable, including name, 
- * assigned memory location, and
- * the list of line numbers in which
- * it appears in the source code
- */
-typedef struct BucketListRec
-{
-	char *name;
-	LineList lines;
-	int memloc; /* memory location for variable */
-	struct BucketListRec *next;
-	struct SymbolInfoRec *info;
-} * BucketList;
 
 /* TODO
 
@@ -76,6 +53,7 @@ typedef struct BlockStructureRec
 	struct BlockStructureRec *before;
 	int depth;
 } * BlockStructure;
+
 
 /* the hash table */
 //static BucketList hashTable[SIZE];
@@ -91,6 +69,7 @@ SymbolInfo _createSymbolInfo(){
 	info->ArraySize = -1;
 	info->decKind = DummyK;
 	info->expType = Void;
+	info->params = NULL;
 	return info;
 }
 
@@ -101,7 +80,6 @@ SymbolInfo getSymbolInfo(TreeNode *tree)
 	SymbolInfo info = _createSymbolInfo();
 	NodeKind nodekind = tree->nodekind;
 	info->nodekind = nodekind;
-	
 	if( tree->expType == INT ){
 		info->expType = Integer;
 	} else if( tree->expType == VOID) {
@@ -119,6 +97,7 @@ SymbolInfo getSymbolInfo(TreeNode *tree)
 		case ParamK:
 			//info->expType = tree->expType;
 			info->decKind = ParamK;
+			info->isArray = tree->isArray;
 			break;
 		case ArrayK:
 			//info->expType = tree->expType;
@@ -324,6 +303,41 @@ int st_lookupLineNo(char *name)
 
 /* TODO
  */
+SymbolInfo st_lookupInfo(char *name)
+{
+	int h = hash(name);
+	BlockStructure cur = hashTableCurrent;
+	BucketList l = NULL;
+	int symbolFind = 0;
+	while (cur != NULL)
+	{
+		l = cur->hashTable[h];
+		while ((l != NULL))
+		{
+			if (strcmp(name, l->name) == 0)
+			{
+				symbolFind = 1;
+				break;
+			}
+			l = l->next;
+		}
+
+		if (symbolFind == 1)
+		{
+			break;
+		}
+		cur = cur->before;
+	}
+
+	if( l == NULL ){
+		return NULL;
+	} else {
+		return l->info;
+	}
+}
+
+/* TODO
+ */
 char* _symkindToStr(DeclarationKind DecKind){
 	//{SimpleK, ArrayK, FunctionK, ParamK, DummyK} DeclarationKind;
 	if(DecKind == SimpleK || DecKind == ArrayK){
@@ -404,6 +418,41 @@ void _printSymTab(FILE *listing, BlockStructure t)
 		}
 		//t = t->sibling;
 	}
+}
+
+void testing(){
+	int i;
+	BlockStructure t = hashTableCurrent;
+	printf("testing\n");
+	for (i = 0; i < SIZE; i++)
+		{
+			BucketList symbol = t->hashTable[i];
+			if (symbol != NULL)
+			{	
+				LineList pLine = symbol->lines;
+				fprintf(listing, "%d\t", t->depth);
+				fprintf(listing, "%s\t", symbol->name);
+				fprintf(listing, "%d\t", symbol->memloc);
+				fprintf(listing, "%s\t", _symkindToStr(symbol->info->decKind));
+				if( symbol->info->isArray ){
+					fprintf(listing, "YES\t%d\t\t", symbol->info->ArraySize);
+				} else {
+					fprintf(listing, "NO\t%s\t\t", "-");
+				}
+				//fprintf(listing, "%d\t", (symbol->info->expType));
+				fprintf(listing, "%s\t", _expTypeToStr(symbol->info->expType));
+				
+				/* ... */
+				while (pLine->next != NULL)
+				{
+					fprintf(listing, "%d, ", pLine->lineno);
+					pLine = pLine->next;
+				}
+				fprintf(listing, "%d", pLine->lineno);
+				printf("\n");
+			}
+		}
+		fprintf(listing, "\n");
 }
 
 /* Procedure printSymTab prints a formatted 
@@ -489,6 +538,31 @@ void st_scopeIn()
 			}
 		}
 	}
+}
+
+/* 0 - next
+	1 - sibling
+ */
+void st_scopeMove(int flag){
+	int i=0;
+	if( flag == 0 ){
+		if(hashTableCurrent->next != NULL){
+			hashTableCurrent = hashTableCurrent->next;
+		} else {
+			printf("move scope next error\n");	
+		}
+	} else {
+		hashTableCurrent = hashTableCurrent->next;
+		for(i=0; i<flag; i++){
+			if(hashTableCurrent->sibling != NULL ){
+				hashTableCurrent = hashTableCurrent->sibling;
+			} else {
+				printf("move scope sibling error\n");	
+				break;
+			}
+		}
+	}
+	
 }
 
 void st_scopeOut()

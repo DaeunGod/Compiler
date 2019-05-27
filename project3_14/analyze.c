@@ -115,6 +115,10 @@ static void insertNode(TreeNode *t, int scopeIn)
       switch (t->kind.stmt)
       {
       case AssignK:
+        for(i=0; i<MAXCHILDREN; i++){
+          insertNode(t->child[i], FALSE);
+        }
+        break;
       case IfK:
       case WhileK:
       case ReturnK:
@@ -182,6 +186,7 @@ static void insertNode(TreeNode *t, int scopeIn)
       case FunctionK:
         if( _checkDuplicatedSymbol(t, LocalNFunc) ){
           info = getSymbolInfo(t);
+          info->params = t->child[0];
           st_insert(t->attr.name, t->lineno, 0, info);
           st_scopeIn();
           insertNode(t->child[0], FALSE); // Parameter part
@@ -221,6 +226,7 @@ void buildSymtab(TreeNode *syntaxTree)
   {
     fprintf(listing, "\nSymbol table:\n\n");
     printSymTab(listing);
+    //testing();
   }
 }
 
@@ -233,52 +239,199 @@ static void typeError(TreeNode *t, char *message)
 /* Procedure checkNode performs
  * type checking at a single tree node
  */
-static void checkNode(TreeNode *t)
+static ExpType checkNode(TreeNode *t, int scopeIn, int siblingCount)
 {
-  switch (t->nodekind)
+  BucketList bucket = NULL;
+  SymbolInfo info = NULL;
+  ExpType e1, e2;
+  TreeNode *p1, *p2;
+  ExpType res = Dummy;
+  int i = 0;
+  
+  //while( t != NULL )
+  if( t != NULL && !isErrorOccurred )
   {
-  case ExpK:
-    switch (t->kind.exp)
-    {
-    case OpK:
-      /*if ((t->child[0]->type != Integer) ||
-              (t->child[1]->type != Integer))
-            typeError(t,"Op applied to non-integer");
-          if ((t->attr.op == EQ) || (t->attr.op == LT))
-            t->type = Boolean;
-          else
-            t->type = Integer;*/
-      break;
-    case ConstK:
-    case IdK:
-      //t->type = Integer;
-      break;
-    default:
-      break;
+    // if( isErrorOccurred ){
+    //   break;
+    // }
+    printf("line no: %d\n", t->lineno);
+    if( t->nodekind == StmtK){
+      switch (t->kind.stmt)
+      {
+      case AssignK:
+        //printf("boom3 here\n");
+        e1 = checkNode(t->child[0], FALSE, 0);
+        e2 = checkNode(t->child[1], FALSE, 0);
+        
+        if( e2 != Integer ){
+          isErrorOccurred = TRUE;
+          typeError(t, "right side's type from assign should be integer not void");
+          break;
+        }
+        res = e1;
+        break;
+      case IfK:
+        //printf("boom here\n");
+        e1 = checkNode(t->child[0], FALSE, 0);
+        checkNode(t->child[1], FALSE, 0);
+        checkNode(t->child[2], FALSE, 0);
+        if( e1 != Integer ){
+          isErrorOccurred = TRUE;
+          typeError(t, "expression part of if statement should be type of integer not void");
+        }
+        break;
+      case WhileK:
+        e1 = checkNode(t->child[0], FALSE, 0);
+        checkNode(t->child[1], FALSE, 0);
+        if( e1 != Integer ){
+          isErrorOccurred = TRUE;
+        }
+        break;
+      case ReturnK:
+        break;
+      case CompoundK:
+        if( scopeIn == FALSE ){
+          st_scopeMove(siblingCount);
+          siblingCount++;
+        }
+        for(i=0; i<MAXCHILDREN; i++){
+          checkNode(t->child[i], FALSE, 0);
+        }
+        st_scopeOut();
+        break;
+      default:
+        break;
+      }
+    } else if (t->nodekind == ExpK) {
+      switch (t->kind.exp)
+      {
+      case IdK:
+        printf("boom4 here %d %s\n", siblingCount, t->attr.name);
+        info = st_lookupInfo(t->attr.name);
+        if( info->isArray ){
+          if( t->child[0] != NULL ){
+            ExpType e = checkNode(t->child[0], FALSE, 0);
+            if( e != Integer ){
+              typeError(t->child[0], "Invalid type of subscript for using Array");
+              isErrorOccurred = TRUE;
+              break;
+            } 
+            res = info->expType;
+          } else {
+            res = Array;
+          }
+        } else {
+          res = info->expType;
+        }
+        break;
+      case OpK:
+        //printf("boom2 here\n");
+        e1 = checkNode(t->child[0], FALSE, 0);
+        e2 = checkNode(t->child[1], FALSE, 0);
+        if( isErrorOccurred ){
+          /* prevent occurring multiple error messages */
+          break;
+        }
+        if( e1 != Integer || e2 != Integer ){
+          typeError(t->child[0], "Invalid Data type for using Operations. need int not void");
+          isErrorOccurred = TRUE;
+          break;
+        }
+        res = Integer;
+        break;
+      case ConstK:
+        res = Integer;
+        break;
+      case FuncCallK:
+        info = st_lookupInfo(t->attr.name);
+        
+        p1 = info->params;
+        p2 = t->child[0];
+        
+        if( (p1 == NULL && p2 != NULL) || (p1 != NULL && p2 == NULL) ){
+          isErrorOccurred = TRUE;
+        }
+        while( !isErrorOccurred && p1 != NULL && p2 != NULL ){
+          printf("\tname:%s %s\n", p1->attr.name, p2->attr.name);
+          e1 = checkNode(p1, FALSE, 0);
+          printf("\tname2:%s %s\n", p1->attr.name, p2->attr.name);
+          e2 = checkNode(p2, FALSE, 0);
+          
+          if( (e1 != e2) ){
+            isErrorOccurred = TRUE;
+            //printf("here2 %s %s %d %d\n", p1->attr.name, p2->attr.name, e1, e2);
+            break;
+          }
+          p1 = p1->sibling;
+          p2 = p2->sibling;
+        }
+        printf("boom\n");
+        if( isErrorOccurred == TRUE ){
+          char str[256];
+          sprintf(str, "type miss match using '%s' function", t->attr.name);
+          typeError(t, str);
+          break;
+        }
+        
+        res = info->expType;
+        break;
+      default:
+        break;
+      }
+    } else if (t->nodekind == DeclarationK) {
+      switch (t->kind.dec)
+      {
+      case FunctionK:
+        st_scopeMove(siblingCount);
+        siblingCount++;
+        if( strcmp(t->attr.name, "main") == 0 ){
+          info = st_lookupInfo(t->attr.name);
+          if( t->sibling != NULL ){
+            isErrorOccurred = TRUE;
+            typeError(t, "main function should be placed end of file.");
+            break;
+          }
+          if( info->expType != Void ){
+            printf("type: %d\n", t->expType);
+            isErrorOccurred = TRUE;
+            typeError(t, "main function's return type should be void.");
+            break;
+          }
+          if( t->child[0] != NULL ){
+            isErrorOccurred = TRUE;
+            typeError(t, "main function do not have parameters.");
+            break;
+          }
+        }
+        //printf("boom5 here %s %d\n", t->attr.name, siblingCount);
+        checkNode(t->child[0], FALSE, 0); // Parameter part
+        checkNode(t->child[1], TRUE, 0); // Compound part
+        break;
+      case SimpleK:
+      case ArrayK:
+      case ParamK:
+        info = st_lookupInfo(t->attr.name);
+        testing();
+        printf("boom4 continue\n");
+        if( info->isArray )
+          res = Array;
+        else
+          res = info->expType;
+        printf("boom4 continue\n");
+        break;
+      default:
+        break;
+      }
     }
-    break;
-  case StmtK:
-    switch (t->kind.stmt)
-    {
-    case IfK:
-      //if (t->child[0]->type == Integer)
-      //  typeError(t->child[0],"if test is not Boolean");
-      break;
-    case AssignK:
-      //if (t->child[0]->type != Integer)
-      //  typeError(t->child[0],"assignment of non-integer value");
-      break;
-    case WriteK:
-      //if (t->child[0]->type != Integer)
-      //  typeError(t->child[0],"write of non-integer value");
-      break;
-    default:
-      break;
+
+    printf("boom4 continue\n");
+    if( t->sibling != NULL ) {
+      //st_scopeMove(1);
+      checkNode( t->sibling, FALSE, siblingCount);
     }
-    break;
-  default:
-    break;
+    //t = t->sibling;
   }
+  return res;
 }
 
 /* Procedure typeCheck performs type checking 
@@ -286,6 +439,8 @@ static void checkNode(TreeNode *t)
  */
 void typeCheck(TreeNode *syntaxTree)
 {
-  checkNode(syntaxTree);
+  checkNode(syntaxTree, FALSE, 0);
+  testing();
+  
   //traverse(syntaxTree, nullProc, checkNode);
 }

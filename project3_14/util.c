@@ -93,6 +93,7 @@ TreeNode * newStmtNode(StmtKind kind)
     t->nodekind = StmtK;
     t->kind.stmt = kind;
     t->lineno = lineno;
+    t->isArray = FALSE;
   }
   return t;
 }
@@ -112,6 +113,7 @@ TreeNode * newExpNode(ExpKind kind)
     t->kind.exp = kind;
     t->lineno = lineno;
     t->expType = Void;
+    t->isArray = FALSE;
   }
   return t;
 }
@@ -131,6 +133,7 @@ TreeNode * newDecNode(DeclarationKind kind) {
     t->kind.dec = kind;
     t->lineno = lineno;
     t->expType = Void;
+    t->isArray = FALSE;
   }
   return t;
 }
