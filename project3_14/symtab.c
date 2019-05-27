@@ -69,7 +69,8 @@ SymbolInfo _createSymbolInfo(){
 	info->ArraySize = -1;
 	info->decKind = DummyK;
 	info->expType = Void;
-	info->params = NULL;
+	info->p = NULL;
+	info->retExpType = -1;
 	return info;
 }
 
@@ -98,6 +99,8 @@ SymbolInfo getSymbolInfo(TreeNode *tree)
 			//info->expType = tree->expType;
 			info->decKind = ParamK;
 			info->isArray = tree->isArray;
+			if(info->isArray)
+				info->ArraySize = 0;
 			break;
 		case ArrayK:
 			//info->expType = tree->expType;
@@ -568,4 +571,28 @@ void st_scopeMove(int flag){
 void st_scopeOut()
 {
 	hashTableCurrent = hashTableCurrent->before;
+}
+
+ParamInfo _createParamInfo(){
+	ParamInfo paInfo = (ParamInfo)malloc(sizeof(struct ParamInfoRec));
+	paInfo->expType = Dummy;
+	paInfo->name = NULL;
+	paInfo->next = NULL;
+}
+
+void inssertParamlInfo(SymbolInfo info, char* name, ExpType expType){
+	if( info->p == NULL ){
+		ParamInfo tmp = _createParamInfo();
+		tmp->expType = expType;
+		tmp->name = name;
+		info->p = tmp;
+	} else {
+		ParamInfo tmp = info->p;
+		while(tmp->next != NULL){
+			tmp = tmp->next;
+		}
+		tmp->next = _createParamInfo();
+		tmp->next->expType = expType;
+		tmp->next->name = name;
+	}
 }

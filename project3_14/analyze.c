@@ -15,7 +15,7 @@ static int location = 0;
 
 /* TODO
  */
-static int isErrorOccurred = FALSE;
+int isErrorOccurred = FALSE;
 
 void debugLog(char * str){
   printf("DEBUG: %s\n", str);
@@ -98,14 +98,16 @@ int _checkVariableTypeInDec(TreeNode *t, SymbolInfo info){
   return 1;
 }
 
+int functionMemLoc = 0;
 /* Procedure insertNode inserts 
  * identifiers stored in t into 
  * the symbol table 
  */
-static void insertNode(TreeNode *t, int scopeIn)
+static int insertNode(TreeNode *t, int scopeIn, char* callFrom, int memloc)
 {
   SymbolInfo info = NULL;
   int i = 0;
+  int localVarLoc = 0;
   while( t != NULL )
   {
     if( isErrorOccurred == TRUE )
@@ -116,23 +118,23 @@ static void insertNode(TreeNode *t, int scopeIn)
       {
       case AssignK:
         for(i=0; i<MAXCHILDREN; i++){
-          insertNode(t->child[i], FALSE);
+          insertNode(t->child[i], FALSE, callFrom, memloc);
         }
         break;
       case IfK:
       case WhileK:
       case ReturnK:
         for(i=0; i<MAXCHILDREN; i++){
-          insertNode(t->child[i], FALSE);
+          insertNode(t->child[i], FALSE, callFrom, memloc);
         }
         break;
       case CompoundK:        
         if( scopeIn == FALSE )
           st_scopeIn();
 
-        for(i=0; i<MAXCHILDREN; i++){
-          insertNode(t->child[i], FALSE);
-        }
+        localVarLoc = insertNode(t->child[0], FALSE, callFrom, memloc);
+        
+        insertNode(t->child[1], FALSE, callFrom, memloc+localVarLoc);
 
         st_scopeOut();
         break;
@@ -155,12 +157,12 @@ static void insertNode(TreeNode *t, int scopeIn)
           /* already in table, so ignore location, 
              	add line number of use only */
           st_insert(t->attr.name, t->lineno, 0, NULL);
-          insertNode(t->child[0], FALSE); // It will proceed If ID is Array
+          insertNode(t->child[0], FALSE, callFrom, memloc); // It will proceed If ID is Array
         }
         break;
       case OpK:
         for(i=0; i<MAXCHILDREN; i++){
-          insertNode(t->child[i], FALSE);
+          insertNode(t->child[i], FALSE, callFrom, memloc);
         }
         break;
       case ConstK:
@@ -174,7 +176,7 @@ static void insertNode(TreeNode *t, int scopeIn)
         else
         {
           st_insert(t->attr.name, t->lineno, 0, NULL);
-          insertNode(t->child[0], FALSE);
+          insertNode(t->child[0], FALSE, callFrom, memloc);
         }
         break;
       default:
@@ -185,21 +187,82 @@ static void insertNode(TreeNode *t, int scopeIn)
       {
       case FunctionK:
         if( _checkDuplicatedSymbol(t, LocalNFunc) ){
+          TreeNode *tmp;
+          int count=0;
           info = getSymbolInfo(t);
-          info->params = t->child[0];
-          st_insert(t->attr.name, t->lineno, 0, info);
+          st_insert(t->attr.name, t->lineno, functionMemLoc, info);
+          functionMemLoc++;
           st_scopeIn();
-          insertNode(t->child[0], FALSE); // Parameter part
-          insertNode(t->child[1], TRUE); // Compound Part
+          tmp = t->child[0];
+          while(tmp!=NULL){
+            count++;
+            tmp = tmp->sibling;
+          }
+          insertNode(t->child[0], FALSE, t->attr.name, 4*count); // Parameter part
+          insertNode(t->child[1], TRUE, t->attr.name, -4); // Compound Part
         }
         break;
       case SimpleK:
+        if( _checkDuplicatedSymbol(t, LocalNFunc) ){
+          info = getSymbolInfo(t);
+          if( _checkVariableTypeInDec(t, info) ){
+            if( callFrom == NULL ){
+              memloc += 4;
+            } else {
+              memloc -= 4;
+              localVarLoc -= 4;
+            }
+            
+            st_insert(t->attr.name, t->lineno, memloc, info);
+            if( callFrom != NULL ){
+              SymbolInfo callFuncInfo = st_lookupInfo(callFrom);
+              if( info->isArray )
+                inssertParamlInfo(callFuncInfo, t->attr.name, Array);
+              else
+                inssertParamlInfo(callFuncInfo, t->attr.name, info->expType);
+            }
+          } else {
+            free(info);
+          }
+        }
+        break;
       case ArrayK:
+        if( _checkDuplicatedSymbol(t, LocalNFunc) ){
+          info = getSymbolInfo(t);
+          if( _checkVariableTypeInDec(t, info) ){
+            if( callFrom == NULL ){
+              memloc += 4*info->ArraySize;
+            } else {
+              memloc -= 4*info->ArraySize;
+              localVarLoc -= 4*info->ArraySize;
+            }
+            st_insert(t->attr.name, t->lineno, memloc, info);
+            if( callFrom != NULL ){
+              SymbolInfo callFuncInfo = st_lookupInfo(callFrom);
+              if( info->isArray )
+                inssertParamlInfo(callFuncInfo, t->attr.name, Array);
+              else
+                inssertParamlInfo(callFuncInfo, t->attr.name, info->expType);
+            }
+          } else {
+            free(info);
+          }
+        }
+      break;
       case ParamK:
         if( _checkDuplicatedSymbol(t, LocalNFunc) ){
           info = getSymbolInfo(t);
           if( _checkVariableTypeInDec(t, info) ){
-            st_insert(t->attr.name, t->lineno, 0, info);
+            
+            st_insert(t->attr.name, t->lineno, memloc, info);
+            memloc -= 4;
+            if( callFrom != NULL ){
+              SymbolInfo callFuncInfo = st_lookupInfo(callFrom);
+              if( info->isArray )
+                inssertParamlInfo(callFuncInfo, t->attr.name, Array);
+              else
+                inssertParamlInfo(callFuncInfo, t->attr.name, info->expType);
+            }
           } else {
             free(info);
           }
@@ -209,9 +272,11 @@ static void insertNode(TreeNode *t, int scopeIn)
         break;
       }
     }
+  
     t = t->sibling;
   }
   
+  return localVarLoc;
 }
 
 /* Function buildSymtab constructs the symbol 
@@ -221,13 +286,8 @@ void buildSymtab(TreeNode *syntaxTree)
 {
   st_scopeIn();
   //traverse(syntaxTree, insertNode, nullProc);
-  insertNode(syntaxTree, FALSE);
-  if ( !isErrorOccurred && TraceAnalyze )
-  {
-    fprintf(listing, "\nSymbol table:\n\n");
-    printSymTab(listing);
-    //testing();
-  }
+  insertNode(syntaxTree, FALSE, NULL, 0);
+  
 }
 
 static void typeError(TreeNode *t, char *message)
@@ -239,13 +299,14 @@ static void typeError(TreeNode *t, char *message)
 /* Procedure checkNode performs
  * type checking at a single tree node
  */
-static ExpType checkNode(TreeNode *t, int scopeIn, int siblingCount)
+static ExpType checkNode(TreeNode *t, int scopeIn, int siblingCount, char* callFrom)
 {
   BucketList bucket = NULL;
   SymbolInfo info = NULL;
   ExpType e1, e2;
   TreeNode *p1, *p2;
   ExpType res = Dummy;
+  ParamInfo pp1;
   int i = 0;
   
   //while( t != NULL )
@@ -254,14 +315,14 @@ static ExpType checkNode(TreeNode *t, int scopeIn, int siblingCount)
     // if( isErrorOccurred ){
     //   break;
     // }
-    printf("line no: %d\n", t->lineno);
+    //printf("line no: %d\n", t->lineno);
     if( t->nodekind == StmtK){
       switch (t->kind.stmt)
       {
       case AssignK:
         //printf("boom3 here\n");
-        e1 = checkNode(t->child[0], FALSE, 0);
-        e2 = checkNode(t->child[1], FALSE, 0);
+        e1 = checkNode(t->child[0], FALSE, 0, callFrom);
+        e2 = checkNode(t->child[1], FALSE, 0, callFrom);
         
         if( e2 != Integer ){
           isErrorOccurred = TRUE;
@@ -272,22 +333,25 @@ static ExpType checkNode(TreeNode *t, int scopeIn, int siblingCount)
         break;
       case IfK:
         //printf("boom here\n");
-        e1 = checkNode(t->child[0], FALSE, 0);
-        checkNode(t->child[1], FALSE, 0);
-        checkNode(t->child[2], FALSE, 0);
+        e1 = checkNode(t->child[0], FALSE, 0, callFrom);
+        checkNode(t->child[1], FALSE, 0, callFrom);
+        checkNode(t->child[2], FALSE, 0, callFrom);
         if( e1 != Integer ){
           isErrorOccurred = TRUE;
           typeError(t, "expression part of if statement should be type of integer not void");
         }
         break;
       case WhileK:
-        e1 = checkNode(t->child[0], FALSE, 0);
-        checkNode(t->child[1], FALSE, 0);
+        e1 = checkNode(t->child[0], FALSE, 0, callFrom);
+        checkNode(t->child[1], FALSE, 0, callFrom);
         if( e1 != Integer ){
           isErrorOccurred = TRUE;
         }
         break;
       case ReturnK:
+        info = st_lookupInfo(callFrom);
+        e1 = checkNode(t->child[0], FALSE, 0, callFrom);
+        info->retExpType = e1;
         break;
       case CompoundK:
         if( scopeIn == FALSE ){
@@ -295,7 +359,7 @@ static ExpType checkNode(TreeNode *t, int scopeIn, int siblingCount)
           siblingCount++;
         }
         for(i=0; i<MAXCHILDREN; i++){
-          checkNode(t->child[i], FALSE, 0);
+          checkNode(t->child[i], FALSE, 0, callFrom);
         }
         st_scopeOut();
         break;
@@ -306,11 +370,11 @@ static ExpType checkNode(TreeNode *t, int scopeIn, int siblingCount)
       switch (t->kind.exp)
       {
       case IdK:
-        printf("boom4 here %d %s\n", siblingCount, t->attr.name);
+        //printf("boom4 here %d %s\n", siblingCount, t->attr.name);
         info = st_lookupInfo(t->attr.name);
         if( info->isArray ){
           if( t->child[0] != NULL ){
-            ExpType e = checkNode(t->child[0], FALSE, 0);
+            ExpType e = checkNode(t->child[0], FALSE, 0, callFrom);
             if( e != Integer ){
               typeError(t->child[0], "Invalid type of subscript for using Array");
               isErrorOccurred = TRUE;
@@ -326,8 +390,8 @@ static ExpType checkNode(TreeNode *t, int scopeIn, int siblingCount)
         break;
       case OpK:
         //printf("boom2 here\n");
-        e1 = checkNode(t->child[0], FALSE, 0);
-        e2 = checkNode(t->child[1], FALSE, 0);
+        e1 = checkNode(t->child[0], FALSE, 0, callFrom);
+        e2 = checkNode(t->child[1], FALSE, 0, callFrom);
         if( isErrorOccurred ){
           /* prevent occurring multiple error messages */
           break;
@@ -345,27 +409,29 @@ static ExpType checkNode(TreeNode *t, int scopeIn, int siblingCount)
       case FuncCallK:
         info = st_lookupInfo(t->attr.name);
         
-        p1 = info->params;
+        pp1 = info->p;
         p2 = t->child[0];
         
-        if( (p1 == NULL && p2 != NULL) || (p1 != NULL && p2 == NULL) ){
+        if( (pp1 == NULL && p2 != NULL) || (pp1 != NULL && p2 == NULL) ){
           isErrorOccurred = TRUE;
         }
-        while( !isErrorOccurred && p1 != NULL && p2 != NULL ){
-          printf("\tname:%s %s\n", p1->attr.name, p2->attr.name);
-          e1 = checkNode(p1, FALSE, 0);
-          printf("\tname2:%s %s\n", p1->attr.name, p2->attr.name);
-          e2 = checkNode(p2, FALSE, 0);
+        while( !isErrorOccurred && pp1 != NULL && p2 != NULL ){
+          //printf("\tname:%s %s\n", pp1->name, p2->attr.name);
+          //e1 = checkNode(p1, FALSE, 0);
+          e1 = pp1->expType;
+          //printf("\tname2:%s %s\n", pp1->name, p2->attr.name);
+          e2 = checkNode(p2, FALSE, 0, callFrom);
           
           if( (e1 != e2) ){
             isErrorOccurred = TRUE;
             //printf("here2 %s %s %d %d\n", p1->attr.name, p2->attr.name, e1, e2);
             break;
           }
-          p1 = p1->sibling;
+          //p1 = p1->sibling;
+          pp1 = pp1->next;
           p2 = p2->sibling;
         }
-        printf("boom\n");
+        //printf("boom\n");
         if( isErrorOccurred == TRUE ){
           char str[256];
           sprintf(str, "type miss match using '%s' function", t->attr.name);
@@ -384,15 +450,14 @@ static ExpType checkNode(TreeNode *t, int scopeIn, int siblingCount)
       case FunctionK:
         st_scopeMove(siblingCount);
         siblingCount++;
+        info = st_lookupInfo(t->attr.name);
         if( strcmp(t->attr.name, "main") == 0 ){
-          info = st_lookupInfo(t->attr.name);
           if( t->sibling != NULL ){
             isErrorOccurred = TRUE;
             typeError(t, "main function should be placed end of file.");
             break;
           }
           if( info->expType != Void ){
-            printf("type: %d\n", t->expType);
             isErrorOccurred = TRUE;
             typeError(t, "main function's return type should be void.");
             break;
@@ -404,30 +469,41 @@ static ExpType checkNode(TreeNode *t, int scopeIn, int siblingCount)
           }
         }
         //printf("boom5 here %s %d\n", t->attr.name, siblingCount);
-        checkNode(t->child[0], FALSE, 0); // Parameter part
-        checkNode(t->child[1], TRUE, 0); // Compound part
+        checkNode(t->child[0], FALSE, 0, t->attr.name); // Parameter part
+        checkNode(t->child[1], TRUE, 0, t->attr.name); // Compound part
+        if( info->expType == Void ){
+          if( info->retExpType != -1 ){
+            isErrorOccurred = TRUE;
+            typeError(t, "void function has no return statement.");
+            break;
+          }
+        } else {
+          if( info->retExpType == -1 ){
+            isErrorOccurred = TRUE;
+            typeError(t, "function should have return statement.");
+            break;
+          }
+        }
         break;
       case SimpleK:
       case ArrayK:
       case ParamK:
         info = st_lookupInfo(t->attr.name);
-        testing();
-        printf("boom4 continue\n");
+        //testing();
+        //printf("boom4 continue\n");
         if( info->isArray )
           res = Array;
         else
           res = info->expType;
-        printf("boom4 continue\n");
+        //printf("boom4 continue\n");
         break;
       default:
         break;
       }
     }
-
-    printf("boom4 continue\n");
     if( t->sibling != NULL ) {
       //st_scopeMove(1);
-      checkNode( t->sibling, FALSE, siblingCount);
+      checkNode( t->sibling, FALSE, siblingCount, callFrom);
     }
     //t = t->sibling;
   }
@@ -439,8 +515,14 @@ static ExpType checkNode(TreeNode *t, int scopeIn, int siblingCount)
  */
 void typeCheck(TreeNode *syntaxTree)
 {
-  checkNode(syntaxTree, FALSE, 0);
-  testing();
+  checkNode(syntaxTree, FALSE, 0, NULL);
+  //testing();
+  if ( !isErrorOccurred && TraceAnalyze )
+  {
+    fprintf(listing, "\nSymbol table:\n\n");
+    printSymTab(listing);
+    //testing();
+  }
   
   //traverse(syntaxTree, nullProc, checkNode);
 }

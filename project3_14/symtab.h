@@ -39,8 +39,9 @@ typedef struct BucketListRec
 typedef struct ParamInfoRec
 {
 	ExpType expType;
+	char *name;
 	struct ParamInfoRec * next;
-} * ParamInfo
+} * ParamInfo;
 
 typedef struct SymbolInfoRec{
 	NodeKind nodekind;
@@ -48,7 +49,8 @@ typedef struct SymbolInfoRec{
 	int expType;
 	int isArray;
 	int ArraySize;
-	TreeNode *params;
+	ParamInfo p;
+	int retExpType;
 } * SymbolInfo;
 
 typedef enum {Full, Local, LocalNFunc} SearchFlag;
@@ -88,5 +90,6 @@ void st_scopeIn();
 void st_scopeMove(int flag);
 void st_scopeOut();
 SymbolInfo getSymbolInfo(TreeNode * tree);
+void inssertParamlInfo(SymbolInfo info, char* name, ExpType expType);
 
 #endif

@@ -1,0 +1,70 @@
+int check(int start)
+{
+	int  i;
+	int n; 
+	int j;
+	int l;
+	int flam;
+	int k[10];
+	start=1;
+    i=2;
+    n=5;
+    j=5;
+    l=5;
+    flam=0;
+    k[5]=0;
+    while (flam==0)
+	{
+        int m;
+        flam=0;
+        m=4;
+		if (k[j] != 1)
+		{
+            int rem;
+            rem=2;
+			m = m+1;
+			k[j] = 1;
+		}
+		if (m == l)
+		{
+            int com;
+            com = 4;
+			flam = 1;
+		}
+		
+	}
+
+	return 1;
+}
+
+int plus(int a, int z, int cnt)
+{
+	int x ;
+	x = a * 10;
+	if (cnt != 0)
+	{
+		int flag;
+		flag = 5;
+		while (flag > 0)
+		{
+			int res;
+			res = 5;
+			flag= flag - 1;
+		}
+	}
+	x = x * 10;
+	return 5;
+}
+
+void main(void)
+{
+	int q ;
+	int cot;
+	int col;
+    int n;
+	q = 5;
+	cot = 2;
+	col= 0;
+	cot = plus(n, n, 1);
+	col = check(1);
+}
