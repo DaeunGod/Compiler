@@ -205,7 +205,7 @@ static int insertNode(TreeNode *t, int scopeIn, char* callFrom, int memloc)
       case SimpleK:
         if( _checkDuplicatedSymbol(t, LocalNFunc) ){
           info = getSymbolInfo(t);
-          if( _checkVariableTypeInDec(t, info) ){
+          //if( _checkVariableTypeInDec(t, info) ){
             if( callFrom == NULL ){
               memloc += 4;
             } else {
@@ -214,22 +214,15 @@ static int insertNode(TreeNode *t, int scopeIn, char* callFrom, int memloc)
             }
             
             st_insert(t->attr.name, t->lineno, memloc, info);
-            // if( callFrom != NULL ){
-            //   SymbolInfo callFuncInfo = st_lookupInfo(callFrom);
-            //   if( info->isArray )
-            //     inssertParamlInfo(callFuncInfo, t->attr.name, Array);
-            //   else
-            //     inssertParamlInfo(callFuncInfo, t->attr.name, info->expType);
-            // }
-          } else {
-            free(info);
-          }
+          //} else {
+          //  free(info);
+          //}
         }
         break;
       case ArrayK:
         if( _checkDuplicatedSymbol(t, LocalNFunc) ){
           info = getSymbolInfo(t);
-          if( _checkVariableTypeInDec(t, info) ){
+          //if( _checkVariableTypeInDec(t, info) ){
             if( callFrom == NULL ){
               memloc += 4*info->ArraySize;
             } else {
@@ -237,22 +230,15 @@ static int insertNode(TreeNode *t, int scopeIn, char* callFrom, int memloc)
               localVarLoc -= 4*info->ArraySize;
             }
             st_insert(t->attr.name, t->lineno, memloc, info);
-            // if( callFrom != NULL ){
-            //   SymbolInfo callFuncInfo = st_lookupInfo(callFrom);
-            //   if( info->isArray )
-            //     inssertParamlInfo(callFuncInfo, t->attr.name, Array);
-            //   else
-            //     inssertParamlInfo(callFuncInfo, t->attr.name, info->expType);
-            // }
-          } else {
-            free(info);
-          } 
+          //} else {
+          //  free(info);
+          //} 
         }
       break;
       case ParamK:
         if( _checkDuplicatedSymbol(t, LocalNFunc) ){
           info = getSymbolInfo(t);
-          if( _checkVariableTypeInDec(t, info) ){
+          //if( _checkVariableTypeInDec(t, info) ){
             
             st_insert(t->attr.name, t->lineno, memloc, info);
             memloc -= 4;
@@ -263,9 +249,9 @@ static int insertNode(TreeNode *t, int scopeIn, char* callFrom, int memloc)
               else
                 inssertParamlInfo(callFuncInfo, t->attr.name, info->expType);
             }
-          } else {
-            free(info);
-          }
+          //} else {
+          //  free(info);
+          //}
         }
         break;
       default:
@@ -288,6 +274,12 @@ void buildSymtab(TreeNode *syntaxTree)
   //traverse(syntaxTree, insertNode, nullProc);
   insertNode(syntaxTree, FALSE, NULL, 0);
   //printSymTab(listing);
+  if ( !isErrorOccurred && TraceAnalyze )
+  {
+    fprintf(listing, "\nSymbol table:\n\n");
+    printSymTab(listing);
+    //testing();
+  }
   
 }
 
@@ -327,7 +319,7 @@ static ExpType checkNode(TreeNode *t, int scopeIn, int siblingCount, char* callF
         
         if( !isErrorOccurred && e2 != Integer ){
           isErrorOccurred = TRUE;
-          typeError(t, "right side's type from assign should be integer not void");
+          typeError(t, "right hand side's type does not match with left hand side.");
           break;
         }
         res = e1;
@@ -514,6 +506,9 @@ static ExpType checkNode(TreeNode *t, int scopeIn, int siblingCount, char* callF
       case ArrayK:
       case ParamK:
         info = st_lookupInfo(t->attr.name);
+        if( !_checkVariableTypeInDec(t, info) ){
+          break;
+        }
         // testing();
         // if( info == NULL ){
         //   printf("info null error\n");
@@ -542,12 +537,7 @@ void typeCheck(TreeNode *syntaxTree)
 {
   checkNode(syntaxTree, FALSE, 0, NULL);
   //testing();
-  if ( !isErrorOccurred && TraceAnalyze )
-  {
-    fprintf(listing, "\nSymbol table:\n\n");
-    printSymTab(listing);
-    //testing();
-  }
+  
   
   //traverse(syntaxTree, nullProc, checkNode);
 }

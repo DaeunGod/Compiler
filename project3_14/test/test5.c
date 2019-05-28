@@ -7,5 +7,5 @@ void func(void){
 }
 
 void main(void){
-    a[0] = func();
+    a[func()] = 10;
 }
