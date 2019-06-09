@@ -1,9 +1,16 @@
-int tmp(int a){	
-	return 0;
+void plus(int a, int b)
+{
+	int c;
+	c = a+b;
 }
 
-void main(void){
-    int a;
-	tmp(10, 20);
+void main(void)
+{
+	int x;
+	int y;
+	int z;
+	if( plus(x,y))
+	{
+		z=1;
+	}
 }
-

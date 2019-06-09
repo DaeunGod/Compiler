@@ -2,7 +2,6 @@
         wrong return statement */
 void func(void){
     int a;
-    return a;
 }
 
 int funb(int c){

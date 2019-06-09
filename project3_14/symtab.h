@@ -6,11 +6,14 @@
 /* Kenneth C. Louden                                */
 /****************************************************/
 
-#ifndef _SYMTAB_H_
-#define _SYMTAB_H_
+#ifndef _SYMTAB2_H_
+#define _SYMTAB2_H_
 
 #include "globals.h"
 #include "tiny.tab.h"
+
+/* SIZE is the size of the hash table */
+#define SIZE 211
 
 /* the list of line numbers of the source 
  * code in which a variable is referenced
@@ -53,6 +56,15 @@ typedef struct SymbolInfoRec{
 	int retExpType;
 } * SymbolInfo;
 
+typedef struct BlockStructureRec
+{
+	BucketList hashTable[SIZE];
+	struct BlockStructureRec *next;
+	int depth;
+    int memhigh;
+    int memlow;
+} * BlockStructure;
+
 typedef enum {Full, Local, LocalNFunc} SearchFlag;
 
 /* Procedure st_insert inserts line numbers and
@@ -65,7 +77,7 @@ void st_insert( char * name, int lineno, int loc, SymbolInfo info );
 /* Function st_lookup returns the memory 
  * location of a variable or -1 if not found
  */
-int st_lookup ( char * name, SearchFlag searchFlag );
+int st_lookup ( char * name, SearchFlag flag );
 
 /* TOOD
  */
@@ -83,11 +95,16 @@ void printSymTab(FILE * listing);
 
 void testing();
 
+void hashTableTopMemdiff(int high, int low);
+
+BlockStructure getHashTableTop();
+
+
+
 /* TODO
  
  */
-void st_scopeIn();
-int st_scopeMove(int flag);
+void st_scopeIn(int withFunc);
 void st_scopeOut();
 SymbolInfo getSymbolInfo(TreeNode * tree);
 void inssertParamlInfo(SymbolInfo info, char* name, ExpType expType);

@@ -74,6 +74,7 @@ typedef struct treeNode
 	   int val;
      int isArray;
      ExpType expType; /* for type checking of exps */
+     struct SymbolInfoRec *info;
    } TreeNode;
 
 /**************************************************/
