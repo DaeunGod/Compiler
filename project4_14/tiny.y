@@ -15,6 +15,7 @@
 #define YYSTYPE TreeNode *
 static char * savedName; /* for use in assignments */
 static char * savedFuncName;
+static char * savedFuncCallName;
 static int savedLineNo;  /* ditto */
 static char * savedValue; /* for use declaration ADD PRJ2 */
 static ExpType savedType; /* for use DataType ADd PRJ2 */
@@ -46,7 +47,7 @@ TreeNode * parse(void)
 %token IF ELSE INT VOID WHILE RETURN
 %token NUM ID 
 %token ASSIGN EQ NOTEQ LTET GTET LT GT PLUS MINUS TIMES OVER LPAREN RPAREN
-%token LSQBRACKET RSQBRACKET LBRACE RBRACE STARTCOMMENT SEMI COMMA
+%token LSQBRACKET RSQBRACKET LBRACE RBRACE STARTCOMMENT SEMI COMMA INPUT OUTPUT
 %token ERROR 
 
 %% /* Grammar for TINY */
@@ -85,6 +86,7 @@ var_declaration  : type_specifier ID { savedName = copyString(tokenStringNew);
 						$$->lineno = savedLineNo;
 						$$->val = atoi(savedValue);
 						$$->expType = $1->expType;
+						$$->isArray = 1;
                  	}
             	 ;
 type_specifier	 : INT { savedType = INT;  $$ = newDecNode(DummyK); $$->expType = INT;}
@@ -95,7 +97,7 @@ fun_declaration	 : type_specifier ID { savedFuncName = copyString(tokenStringNew
 					LPAREN params RPAREN compound_stmt
 					{ $$ = newDecNode(FunctionK);
 						$$->attr.name = savedFuncName;
-						$$->lineno = savedLineNo;
+						$$->lineno = lineno;
 						$$->child[0] = $5;
 						$$->child[1] = $7;
 						$$->expType = $1->expType;
@@ -128,6 +130,7 @@ param			 : type_specifier ID
 						$$->attr.name = savedName;
 						$$->lineno = savedLineNo;
 						$$->expType = savedType;
+						$$->isArray = 1;
 					}
 				 ;
 compound_stmt	 : LBRACE local_declarations statement_list RBRACE
@@ -213,6 +216,7 @@ var					 : ID
 							$$->attr.name = savedName;
 							$$->lineno = savedLineNo;
 							$$->child[0] = $4;
+							$$->isArray = 1;
 						}
 					 ;
 simple_expression	 : additive_expression relop additive_expression
@@ -260,14 +264,16 @@ factor				 : LPAREN expression RPAREN { $$ = $2; }
 							$$->val = atoi(tokenString);
 						}
 					 ;
-call				 : ID { savedFuncName = copyString(tokenStringNew); 
+call				 : ID { savedFuncCallName = copyString(tokenStringNew); 
 						    savedLineNo = lineno; }
 						LPAREN args RPAREN
 						{ $$ = newExpNode(FuncCallK);
-							$$->attr.name = savedFuncName;
+							$$->attr.name = savedFuncCallName;
 							$$->lineno = savedLineNo;
 							$$->child[0] = $4;
 						}
+					 | inputcall { $$ = $1; }
+					 | outputcall { $$ = $1; }
 					 ;
 args				 : arg_list { $$ = $1; }
 					 | %empty { $$ = NULL; }
@@ -282,6 +288,20 @@ arg_list			 : arg_list COMMA expression
 							else $$ = $3;
 						}
 					 | expression { $$ = $1; }
+					 ;
+inputcall			 : INPUT LPAREN var RPAREN
+						{ $$ = newExpNode(InputCallK);
+							$$->attr.name = "input";
+							$$->lineno = lineno;
+							$$->child[0] = $3;
+						}
+					 ;
+outputcall			 : OUTPUT LPAREN expression RPAREN
+						{ $$ = newExpNode(OutputCallK);
+							$$->attr.name = "output";
+							$$->lineno = lineno;
+							$$->child[0] = $3;
+						}
 					 ;
 %%
 

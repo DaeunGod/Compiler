@@ -1,0 +1,13 @@
+/* error13
+        wrong return statement */
+void func(void){
+    int a;
+}
+
+int funb(int c){
+    c = 1;
+}
+
+int main(void){
+    func(); funb(1);
+}
