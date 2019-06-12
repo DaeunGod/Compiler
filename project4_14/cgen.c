@@ -134,7 +134,7 @@ static void genExp(TreeNode *tree)
 } /* genExp */
 
 static int addedMemLoc = 0;
-
+static int paramCount = 0;
 static void genDec(TreeNode *tree)
 {
    if (tree != NULL)
@@ -144,28 +144,18 @@ static void genDec(TreeNode *tree)
       case FunctionK:
       {
          char addedMem[10]={0};
-         emitComment("Function Dec");
+         emitComment("#Function Dec");
          emitLabel(tree->attr.name);
 
-         //    sw      $ra,0($sp)  #Push return address
-         //   addiu   $sp,$sp,-4  # onto stack
-         //   sw      $a0,0($sp)  #Push $a0
-         //   addiu   $sp,$sp,-4  # onto stack
-         //   la      $a0,crlfz   #Point to new line string
-         //   jal     wr_str      #Output CRLF to console
-         //   addiu   $sp,$sp,4   #Pop $a0
-         //   lw      $a0,0($sp)  # from stack
-         //   addiu   $sp,$sp,4   #Pop return address
-         //   lw      $ra,0($sp)  # from stack
-         //   jr      $ra         #Return
-
-         emitComment("\tSave registers");
+         emitComment("\t#Save registers");
          emitInst3param("subu", "$sp", "$sp", "32"); //Stack frame is 32 bytes long
          emitInst2param("sw", "$ra", "8($sp)");     //Save retrun address
          emitInst2param("sw", "$fp", "0($sp)");     //Save frame pointer
          emitInst3param("addu", "$fp", "$sp", "0"); //Set up frame pointer
          emitComment("");
 
+         paramCount = 0;
+         cGen(tree->child[0]); // Parameter decl.
          cGen(tree->child[1]); // Compound Stmt.
 
          /* print single integer
@@ -175,7 +165,7 @@ static void genDec(TreeNode *tree)
          sprintf(addedMem, "%d", addedMemLoc);
          emitInst3param("addu", "$sp", "$sp", addedMem);
          emitComment("");
-         emitComment("\tRestore registers");
+         emitComment("\t#Restore registers");
          emitInst2param("lw", "$ra", "8($sp)");     // Restore return address
          emitInst2param("lw", "$fp", "0($sp)");     // Restore frame pointer
          emitInst3param("addu", "$sp", "$sp", "32"); // Pop stack frame
@@ -187,17 +177,42 @@ static void genDec(TreeNode *tree)
       {
          //char regi[10]={0};
          //sprintf(regi, "%d", tree->info->memloc);
-         addedMemLoc += 4;
-         // emitInst2param("sw", "$0", regi);
-         emitInst3param("subu", "$sp", "$sp", "4");
+         if( tree->info->memloc < 0 ){
+            /* local variable */
+            addedMemLoc += 4;
+            // emitInst2param("sw", "$0", regi);
+            emitInst3param("subu", "$sp", "$sp", "4");
+         } else {
+            /* global variable */
+         }
          break;
       }
       case ArrayK:
+      {
+         char s[10]={0};
+         int size = tree->val;
+         if( tree->info->memloc < 0 ){
+            /* local variable */
+            addedMemLoc += size;
+            sprintf(s, "%d", size);
+            emitInst3param("subu", "$sp", "$sp", s);
+         } else {
+            /* global variable */
+         }
+
          break;
+      }
       case ParamK:
       {
+         int base = 8;
+         char regi[10]={0};
+         char pos[10] = {0};
+         sprintf(regi, "$a%d", paramCount);
+         sprintf(pos, "%d($fp)", base+tree->info->memloc);
+         emitInst2param("sw", regi, pos);
+         paramCount++;
+         break;
       }
-      break;
       default:
          break;
       }
@@ -248,7 +263,7 @@ void codeGen(TreeNode *syntaxTree, char *codefile)
    emitComment("##########################################");
    emitDirective(".data");
    emitDataDec("inStr", ".asciiz", "\"Enter value for input instruction: \"");
-   emitDataDec("OutStr", ".asciiz", "\"output instruction prints: \"");
+   emitDataDec("outStr", ".asciiz", "\"output instruction prints: \"");
    emitDataDec("crlfz", ".ascii", "\"\\n\"");
    emitDirective(".text");
    emitDirective(".globl main\n");

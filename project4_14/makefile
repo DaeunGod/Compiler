@@ -5,7 +5,7 @@ BISON = bison
 CFLAGS =
 
 OBJS = lex.yy.o tiny.tab.o main.o util.o analyze.o symtab.o code.o cgen.o
-TARGET = project3_14
+TARGET = project4_14
 
 all: ${TARGET}
 
@@ -32,3 +32,4 @@ clean:
 	rm -f ${OBJS} ${TARGET}
 	rm -f lex.yy.c
 	rm -f tiny.tab.*
+	rm -f *.tm

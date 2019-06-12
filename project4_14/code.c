@@ -126,8 +126,17 @@ void emitDataDec(char* name, char* type, char* data){
   fprintf(code, "%s:\t%s\t%s\n", name, type, data);
 }
 
-void _emitWriteFunc(){
+void _emitWriteIntFunc(){
   emitLabel("WR_INT");
+  //emitInst2param("la", "$a0", "outStr");
+  //emitInst1param("jal", "WR_STR");
+  /* Print Input message */
+  emitInst2param("move", "$t0", "$a0");
+  emitInst2param("la", "$a0", "outStr");
+  emitInst3param("addi", "$v0", "$0", "4");
+  fprintf(code, "\t%s\n", "syscall");
+  emitInst2param("move", "$a0", "$t0");
+  /***********************/
   fprintf(code, "\t%s\t%s,%s,%d ", "addi", "$v0", "$0", 1);
   emitComment("Print integer");
   fprintf(code, "\t%s\n", "syscall");
@@ -138,8 +147,20 @@ void _emitWriteFunc(){
   emitComment("Return");
 }
 
+void _emitWriteStrFunc(){
+  emitLabel("WR_STR");
+  emitInst3param("addi", "$v0", "$0", "4");
+  fprintf(code, "\t%s\n", "syscall");
+  emitInst1param("jr", "$ra");
+}
+
 void _emitReadFunc(){
   emitLabel("RD_INT");
+  /* Print Input message */
+  emitInst2param("la", "$a0", "inStr");
+  emitInst3param("addi", "$v0", "$0", "4");
+  fprintf(code, "\t%s\n", "syscall");
+  /***********************/
   fprintf(code, "\t%s\t%s,%s,%d ", "addi", "$v0", "$0", 5);
   emitComment("Read integer");
   fprintf(code, "\t%s\n", "syscall");
@@ -151,10 +172,12 @@ void _emitReadFunc(){
 
 void emitInputOutputFuncs(){
   emitComment("##########################################");
-  emitComment("FUNCTIONS: WR_INT, RD_INT");
+  emitComment("FUNCTIONS: WR_STR, WR_INT, RD_INT");
+  emitComment("WR_STR: print string");
   emitComment("WR_INT: print single integer");
   emitComment("RD_INT: read single integer");
-  _emitWriteFunc();
+  _emitWriteStrFunc();
+  _emitWriteIntFunc();
   _emitReadFunc();
   emitComment("##########################################\n");
 }
