@@ -76,6 +76,7 @@ SymbolInfo _createSymbolInfo(){
 	info->p = NULL;
 	info->retExpType = -1;
 	info->memloc = -1;
+  info->isGlobal = 0;
 	return info;
 }
 

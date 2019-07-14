@@ -55,6 +55,7 @@ typedef struct SymbolInfoRec{
 	ParamInfo p;
 	int retExpType;
 	int memloc;
+	int isGlobal;
 } * SymbolInfo;
 
 typedef struct BlockStructureRec

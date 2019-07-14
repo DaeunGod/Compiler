@@ -220,6 +220,7 @@ static void insertNode(TreeNode *t){
 
         if( getHashTableTop()->depth == 0 ){
           getHashTableTop()->memlow += 4;
+          t->info->isGlobal = 1;
           memloc = getHashTableTop()->memlow;
         } else {
           getHashTableTop()->memhigh -= 4;
@@ -236,6 +237,7 @@ static void insertNode(TreeNode *t){
         if( getHashTableTop()->depth == 0 ){
           getHashTableTop()->memlow += 4*(t->info)->ArraySize;
           memloc = getHashTableTop()->memlow;
+          t->info->isGlobal = 1;
         } else {
           getHashTableTop()->memhigh -= 4*(t->info)->ArraySize;
           memloc = getHashTableTop()->memhigh;
